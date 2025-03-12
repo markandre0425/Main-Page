@@ -1,0 +1,140 @@
+:root {
+  /* Fire safety theme colors */
+  --fire-red: #E53E3E;
+  --fire-orange: #ED8936;
+  --water-blue: #3182CE;
+  --safety-yellow: #ECC94B;
+  --dark-navy: #2D3748;
+  
+  /* Font variables */
+  --font-baloo: 'Baloo 2', cursive;
+  --font-nunito: 'Nunito', sans-serif;
+  --font-fredoka: 'Fredoka One', cursive;
+}
+
+/* Tailwind override classes */
+.text-fire-red {
+  color: var(--fire-red);
+}
+
+.text-fire-orange {
+  color: var(--fire-orange);
+}
+
+.text-water-blue {
+  color: var(--water-blue);
+}
+
+.text-safety-yellow {
+  color: var(--safety-yellow);
+}
+
+.text-dark-navy {
+  color: var(--dark-navy);
+}
+
+.bg-fire-red {
+  background-color: var(--fire-red);
+}
+
+.bg-fire-orange {
+  background-color: var(--fire-orange);
+}
+
+.bg-water-blue {
+  background-color: var(--water-blue);
+}
+
+.bg-safety-yellow {
+  background-color: var(--safety-yellow);
+}
+
+.bg-dark-navy {
+  background-color: var(--dark-navy);
+}
+
+.border-fire-red {
+  border-color: var(--fire-red);
+}
+
+.border-fire-orange {
+  border-color: var(--fire-orange);
+}
+
+.border-water-blue {
+  border-color: var(--water-blue);
+}
+
+.border-safety-yellow {
+  border-color: var(--safety-yellow);
+}
+
+.border-dark-navy {
+  border-color: var(--dark-navy);
+}
+
+.from-fire-red {
+  --tw-gradient-from: var(--fire-red);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(229, 62, 62, 0));
+}
+
+.to-fire-orange {
+  --tw-gradient-to: var(--fire-orange);
+}
+
+.font-baloo {
+  font-family: var(--font-baloo);
+}
+
+.font-nunito {
+  font-family: var(--font-nunito);
+}
+
+.font-fredoka {
+  font-family: var(--font-fredoka);
+}
+
+/* Hover state classes */
+.hover\:text-safety-yellow:hover {
+  color: var(--safety-yellow);
+}
+
+.hover\:bg-fire-orange:hover {
+  background-color: var(--fire-orange);
+}
+
+.hover\:text-fire-orange:hover {
+  color: var(--fire-orange);
+}
+
+.hover\:text-white:hover {
+  color: white;
+}
+
+.hover\:bg-red-700:hover {
+  background-color: #C53030;
+}
+
+.hover\:bg-orange-600:hover {
+  background-color: #DD6B20;
+}
+
+.game-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.achievement-badge {
+  transition: all 0.3s ease;
+}
+
+.achievement-badge:hover {
+  transform: scale(1.05);
+}
+
+.age-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
