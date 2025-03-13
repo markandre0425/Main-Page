@@ -126,6 +126,17 @@ export class MemStorage implements IStorage {
       completions: new Map(Object.values(gameTypes).map(type => [type, { total: 0, completed: 0 }]))
     };
 
+    // Initialize the ID counters
+    this.currentUserId = 1; // Start from 1 instead of undefined
+    this.currentQuizId = 1;
+    this.currentQuizQuestionId = 1;
+    this.currentCrosswordId = 1;
+    this.currentWordScrambleId = 1;
+    this.currentWordPicId = 1;
+    this.currentUserProgressId = 1;
+    this.currentAchievementId = 1;
+    this.currentUserAchievementId = 1;
+
     this.seedAchievements();
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
@@ -145,7 +156,12 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const now = new Date();
-    const user: User = { ...insertUser, id, createdAt: now, progress: 0 };
+    const user: User = { 
+      ...insertUser, 
+      id, // This will now be a valid number
+      createdAt: now, 
+      progress: 0 
+    };
     this.users.set(id, user);
     return user;
   }

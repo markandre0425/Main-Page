@@ -28,6 +28,15 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+// Type guard for serializable user
+function isSerializableUser(user: any): user is { id: number } {
+  // Add debug logging
+  console.log('Attempting to serialize user:', user);
+  const isValid = user && typeof user.id === 'number' && !isNaN(user.id);
+  console.log('Is user valid for serialization:', isValid);
+  return isValid;
+}
+
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "fire-safety-app-secret",
@@ -63,12 +72,36 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
+  passport.serializeUser((user, done) => {
+    console.log('SerializeUser called with:', user);
+    
+    if (!isSerializableUser(user)) {
+      console.error('User serialization failed:', user);
+      return done(new Error("Invalid user object for serialization"));
+    }
+    
+    console.log('Serializing user with id:', user.id);
+    done(null, user.id);
+  });
+  passport.deserializeUser(async (id: unknown, done) => {
+    console.log('DeserializeUser called with id:', id);
+    
     try {
+      if (typeof id !== 'number') {
+        console.error('Invalid user ID type:', typeof id);
+        return done(new Error("Invalid user ID"));
+      }
+      
       const user = await storage.getUser(id);
+      console.log('Deserialized user:', user);
+      
+      if (!user) {
+        return done(new Error("User not found"));
+      }
+      
       done(null, user);
     } catch (err) {
+      console.error('Deserialization error:', err);
       done(err);
     }
   });
@@ -104,22 +137,20 @@ export function setupAuth(app: Express) {
         email,
         ageGroup,
       });
-      
-      // Award the "First Day" achievement
-      const achievements = await storage.getAchievements();
-      const firstDayAchievement = achievements.find(a => a.condition === "ACCOUNT_CREATED");
-      if (firstDayAchievement) {
-        await storage.awardAchievement(user.id, firstDayAchievement.id);
-      }
 
-      // Log in the user
+      // Add debug logging
+      console.log('Created user:', { ...user, password: '[REDACTED]' });
+
       req.login(user, (err) => {
-        if (err) return next(err);
-        // Don't send the password hash back to the client
+        if (err) {
+          console.error('Login error:', err);
+          return next(err);
+        }
         const { password, ...userWithoutPassword } = user;
         res.status(201).json(userWithoutPassword);
       });
     } catch (err) {
+      console.error('Registration error:', err);
       next(err);
     }
   });
