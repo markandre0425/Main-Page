@@ -1,678 +1,935 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import NavBar from "@/components/nav-bar";
+import { AdminGuard } from "@/components/admin-guard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { useAuth } from "@/hooks/use-auth";
-import { FaTools, FaChartLine, FaMedal, FaUserPlus, FaUserEdit, FaTrophy, FaEdit, FaTrash } from "react-icons/fa";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Search,
+  Filter,
+  UserPlus,
+  Edit,
+  Trash2,
+  Mail,
+  Lock,
+  Award,
+  FileDown, // Add this for export icon
+  Database, // Add this for database icon
+  Trophy,
+  Plus,
+  AlertTriangle
+} from "lucide-react";
 import Footer from "@/components/footer";
-import { z } from "zod";
-
-// QuizForm schema
-const quizFormSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  ageGroup: z.string(),
-  difficulty: z.string(),
-});
-
-type QuizFormValues = z.infer<typeof quizFormSchema>;
-
-// User form schema
-const userFormSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  ageGroup: z.string(),
-});
-
-type UserFormValues = z.infer<typeof userFormSchema>;
-
-// Achievement form schema
-const achievementFormSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  criteria: z.string().min(5, "Criteria must be at least 5 characters"),
-  points: z.number().min(1, "Points must be at least 1"),
-});
-
-type AchievementFormValues = z.infer<typeof achievementFormSchema>;
+import { apiRequest } from "@/lib/queryClient";
+import { gameTypes, ageGroups } from "@shared/schema";
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
-  const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("content");
-  const [selectedGameType, setSelectedGameType] = useState("quiz");
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("analytics");
 
-  // Check if user is admin
-  const isAdmin = user?.username === "admin" || user?.id === 1;
-
-  if (!isAdmin) {
-    // If not admin, redirect to home
-    setTimeout(() => navigate("/"), 100);
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-          <p className="mb-4">You do not have permission to view this page.</p>
-          <Button onClick={() => navigate("/")}>Return to Home</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Get all users
-  const { data: users, isLoading: usersLoading } = useQuery({
-    queryKey: ["admin-users"],
+  // Analytics Data
+  const { data: analytics } = useQuery({
+    queryKey: ['admin', 'analytics'],
     queryFn: async () => {
-      try {
-        const res = await fetch("/api/admin/users");
-        if (!res.ok) return [];
-        return await res.json();
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        return [];
-      }
+      const response = await apiRequest('GET', '/api/admin/analytics');
+      return response.json();
     }
   });
 
-  // Get all games
-  const { data: games, isLoading: gamesLoading } = useQuery({
-    queryKey: ["admin-games"],
+  // Progress Summary
+  const { data: progressSummary } = useQuery({
+    queryKey: ['admin', 'progress', 'summary'],
     queryFn: async () => {
-      try {
-        // For the admin dashboard, we'll just aggregate the game data we have
-        const [quizzes, crosswords, wordScrambles, wordPics] = await Promise.all([
-          fetch("/api/quizzes").then(res => res.ok ? res.json() : []),
-          fetch("/api/crosswords").then(res => res.ok ? res.json() : []),
-          fetch("/api/word-scrambles").then(res => res.ok ? res.json() : []),
-          fetch("/api/word-pics").then(res => res.ok ? res.json() : [])
-        ]);
-
-        return {
-          quizzes: quizzes || [],
-          crosswords: crosswords || [],
-          wordScrambles: wordScrambles || [],
-          wordPics: wordPics || []
-        };
-      } catch (error) {
-        console.error("Error fetching games:", error);
-        return {
-          quizzes: [],
-          crosswords: [],
-          wordScrambles: [],
-          wordPics: []
-        };
-      }
+      const response = await apiRequest('GET', '/api/admin/progress/summary');
+      return response.json();
     }
   });
 
-  // Get all achievements
-  const { data: achievements, isLoading: achievementsLoading } = useQuery({
-    queryKey: ["admin-achievements"],
+  // Game Counts
+  const { data: gameCounts } = useQuery({
+    queryKey: ['admin', 'games', 'count'],
     queryFn: async () => {
-      try {
-        const res = await fetch("/api/achievements");
-        if (!res.ok) return [];
-        return await res.json();
-      } catch (error) {
-        console.error("Error fetching achievements:", error);
-        return [];
-      }
+      const response = await apiRequest('GET', '/api/admin/games/count');
+      return response.json();
     }
   });
 
-  // Get basic analytics
-  const { data: analytics, isLoading: analyticsLoading } = useQuery({
-    queryKey: ["admin-analytics"],
-    queryFn: async () => {
-      try {
-        // In a real implementation, you would have a proper analytics endpoint
-        // For now, we'll simulate some basic analytics
-        const [userCount, gameData, progressData] = await Promise.all([
-          fetch("/api/admin/users/count").then(res => res.ok ? res.json() : { count: 0 }),
-          fetch("/api/admin/games/stats").then(res => res.ok ? res.json() : {}),
-          fetch("/api/admin/progress/stats").then(res => res.ok ? res.json() : {})
-        ]);
-
-        return {
-          userCount: userCount.count || 0,
-          gameStats: gameData || {},
-          progressStats: progressData || {}
-        };
-      } catch (error) {
-        console.error("Error fetching analytics:", error);
-        return {
-          userCount: 0,
-          gameStats: {},
-          progressStats: {}
-        };
-      }
+  // Database Actions
+  const databaseActionMutation = useMutation({
+    mutationFn: async (action: string) => {
+      const response = await apiRequest('POST', `/api/admin/database/${action}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Database action completed successfully",
+      });
+      queryClient.invalidateQueries();
     }
   });
 
-  // Mutations
+  // Export Data
+  const exportDataMutation = useMutation({
+    mutationFn: async (type: string) => {
+      const response = await apiRequest('GET', `/api/admin/export/${type}`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Create and download file
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `export-${Date.now()}.json`;
+      a.click();
+    }
+  });
+
+  // Users Data
+  const [userSearch, setUserSearch] = useState("");
+  const [ageGroupFilter, setAgeGroupFilter] = useState<string>("all");
+
+  const { data: users, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/users');
+      return response.json();
+    }
+  });
+
+  // User Management Mutations
   const createUserMutation = useMutation({
-    mutationFn: async (data: UserFormValues) => {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) throw new Error("Failed to create user");
-      return res.json();
+    mutationFn: async (userData: any) => {
+      const response = await apiRequest('POST', '/api/admin/users', userData);
+      return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "User Created",
-        description: "The user has been created successfully.",
+        title: "Success",
+        description: "User created successfully",
       });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to create user: ${error.message}`,
-        variant: "destructive"
-      });
+      queryClient.invalidateQueries(['admin', 'users']);
     }
   });
 
-  const createAchievementMutation = useMutation({
-    mutationFn: async (data: AchievementFormValues) => {
-      const res = await fetch("/api/achievements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) throw new Error("Failed to create achievement");
-      return res.json();
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const response = await apiRequest('PATCH', `/api/admin/users/${id}`, data);
+      return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Achievement Created",
-        description: "The achievement has been created successfully.",
+        title: "Success",
+        description: "User updated successfully",
       });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to create achievement: ${error.message}`,
-        variant: "destructive"
-      });
+      queryClient.invalidateQueries(['admin', 'users']);
     }
   });
 
   const deleteUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: "DELETE"
-      });
-      if (!res.ok) throw new Error("Failed to delete user");
-      return true;
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('DELETE', `/api/admin/users/${id}`);
+      return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "User Deleted",
-        description: "The user has been deleted successfully.",
+        title: "Success",
+        description: "User deleted successfully",
       });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to delete user: ${error.message}`,
-        variant: "destructive"
-      });
+      queryClient.invalidateQueries(['admin', 'users']);
     }
   });
 
-  const seedGameDataMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/admin/seed", {
-        method: "POST"
-      });
-      if (!res.ok) throw new Error("Failed to seed data");
-      return true;
+  // Filter users based on search and age group
+  const filteredUsers = users?.filter(user => {
+    const matchesSearch = 
+      user.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+      user.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+      user.username.toLowerCase().includes(userSearch.toLowerCase());
+    
+    const matchesAgeGroup = ageGroupFilter === 'all' || user.ageGroup === ageGroupFilter;
+    
+    return matchesSearch && matchesAgeGroup;
+  });
+
+  const { data: achievements, isLoading: isLoadingAchievements } = useQuery({
+    queryKey: ['admin', 'achievements'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/achievements');
+      return response.json();
+    }
+  });
+
+  const createAchievementMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest('POST', '/api/admin/achievements', data);
+      return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Data Seeded",
-        description: "Sample data has been seeded successfully.",
+        title: "Success",
+        description: "Achievement created successfully",
       });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to seed data: ${error.message}`,
-        variant: "destructive"
-      });
+      queryClient.invalidateQueries(['admin', 'achievements']);
     }
   });
 
-  const onUserSubmit = (data: UserFormValues) => {
-    createUserMutation.mutate(data);
-  };
-
-  const onAchievementSubmit = (data: AchievementFormValues) => {
-    createAchievementMutation.mutate(data);
-  };
-
-  const handleSeedData = () => {
-    seedGameDataMutation.mutate();
-  };
-
-  const handleDeleteUser = (userId: number) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      deleteUserMutation.mutate(userId);
+  const deleteAchievementMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('DELETE', `/api/admin/achievements/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Achievement deleted successfully",
+      });
+      queryClient.invalidateQueries(['admin', 'achievements']);
     }
-  };
+  });
+
+  // Add this near your other queries at the top of the component
+  const { data: gameMetrics = { completionRates: {}, averageScores: {} }, isLoading: metricsLoading } = useQuery({
+    queryKey: ['admin', 'gameMetrics'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/metrics');
+      return response.json();
+    }
+  });
+
+  // Add this mutation at the top with your other mutations
+  const createContentMutation = useMutation({
+    mutationFn: async ({ type, data }: { type: string; data: any }) => {
+      const response = await apiRequest('POST', `/api/admin/content/${type}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Content created successfully",
+      });
+      queryClient.invalidateQueries(['admin', 'content']);
+    }
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <NavBar />
+    <AdminGuard>
+      <div className="min-h-screen flex flex-col">
+        <NavBar />
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="users">Users</TabsTrigger>
+              <TabsTrigger value="achievements">Achievements</TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="content">Content Management</TabsTrigger>
+              <TabsTrigger value="metrics">Performance Metrics</TabsTrigger>
+              <TabsTrigger value="feedback">User Feedback</TabsTrigger>
+            </TabsList>
 
-      <main className="container mx-auto px-4 py-12">
-        <div className="bg-dark-navy p-6 rounded-xl shadow-lg mb-8">
-          <h1 className="text-2xl font-baloo font-bold text-white">Admin Dashboard</h1>
-          <p className="text-white opacity-80">Manage content, users, and monitor progress</p>
-        </div>
+            <TabsContent value="analytics">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>User Statistics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <p>Total Users: {analytics?.totalUsers || 0}</p>
+                      <p>Active Sessions: {analytics?.activeSessions || 0}</p>
+                      <p>Completion Rate: {analytics?.completionRate || 0}%</p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-        <Tabs defaultValue="content" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 mb-8">
-            <TabsTrigger value="content">Content</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="achievements">Achievements</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Game Statistics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <p>Quizzes: {gameCounts?.quizzes || 0}</p>
+                      <p>Crosswords: {gameCounts?.crosswords || 0}</p>
+                      <p>Word Scrambles: {gameCounts?.wordScrambles || 0}</p>
+                      <p>Word Pics: {gameCounts?.wordPics || 0}</p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-          {/* CONTENT MANAGEMENT TAB */}
-          <TabsContent value="content">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Content cards would go here */}
-            </div>
-          </TabsContent>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Progress by Age Group</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {progressSummary?.byAgeGroup && Object.entries(progressSummary.byAgeGroup).map(([group, value]) => (
+                      <div key={group} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>{group}</span>
+                          <span>{value}%</span>
+                        </div>
+                        <Progress value={value} />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
 
-          {/* USERS MANAGEMENT TAB */}
-          <TabsContent value="users">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* User Management Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Engagement Metrics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium">Average Session Duration</h4>
+                        <p className="text-2xl font-bold">{analytics?.avgSessionDuration || '0'} minutes</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium">Return Rate</h4>
+                        <p className="text-2xl font-bold">{analytics?.returnRate || '0'}%</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium">Most Active Time</h4>
+                        <p className="text-2xl font-bold">{analytics?.peakActivityTime || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="users">
               <Card>
                 <CardHeader>
-                  <CardTitle>User Management</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>User Management</CardTitle>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Add User
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add New User</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          const formData = new FormData(e.currentTarget);
+                          createUserMutation.mutate(Object.fromEntries(formData));
+                        }}>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="username">Username</Label>
+                              <Input id="username" name="username" required />
+                            </div>
+                            <div>
+                              <Label htmlFor="name">Name</Label>
+                              <Input id="name" name="name" required />
+                            </div>
+                            <div>
+                              <Label htmlFor="email">Email</Label>
+                              <Input id="email" name="email" type="email" required />
+                            </div>
+                            <div>
+                              <Label htmlFor="ageGroup">Age Group</Label>
+                              <Select name="ageGroup" defaultValue={ageGroups.KIDS}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select age group" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.values(ageGroups).map(group => (
+                                    <SelectItem key={group} value={group}>
+                                      {group}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button type="submit">Create User</Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-4">
-                    <h3 className="font-semibold text-gray-700 mb-1">Key Features:</h3>
+                  <div className="space-y-4">
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search users..."
+                            value={userSearch}
+                            onChange={(e) => setUserSearch(e.target.value)}
+                            className="pl-8"
+                          />
+                        </div>
+                      </div>
+                      <Select value={ageGroupFilter} onValueChange={setAgeGroupFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter by age group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All age groups</SelectItem>
+                          {Object.values(ageGroups).map(group => (
+                            <SelectItem key={group} value={group}>{group}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Age Group</TableHead>
+                            <TableHead>Progress</TableHead>
+                            <TableHead>Joined</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredUsers?.map(user => (
+                            <TableRow key={user.id}>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{user.name}</div>
+                                  <div className="text-sm text-muted-foreground">{user.email}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{user.ageGroup}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="w-full">
+                                  <div className="flex justify-between text-sm mb-1">
+                                    <span>Progress</span>
+                                    <span>{user.progress}%</span>
+                                  </div>
+                                  <Progress value={user.progress} />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {format(new Date(user.createdAt), 'MMM d, yyyy')}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="ghost" size="icon">
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Edit User</DialogTitle>
+                                      </DialogHeader>
+                                      <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const formData = new FormData(e.currentTarget);
+                                        updateUserMutation.mutate({ 
+                                          id: user.id, 
+                                          data: Object.fromEntries(formData)
+                                        });
+                                      }}>
+                                        <div className="space-y-4">
+                                          <div>
+                                            <Label htmlFor="name">Name</Label>
+                                            <Input 
+                                              id="name" 
+                                              name="name" 
+                                              defaultValue={user.name}
+                                            />
+                                          </div>
+                                          <div>
+                                            <Label htmlFor="email">Email</Label>
+                                            <Input 
+                                              id="email" 
+                                              name="email" 
+                                              type="email" 
+                                              defaultValue={user.email}
+                                            />
+                                          </div>
+                                          <div>
+                                            <Label htmlFor="ageGroup">Age Group</Label>
+                                            <Select 
+                                              name="ageGroup" 
+                                              defaultValue={user.ageGroup}
+                                            >
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {Object.values(ageGroups).map(group => (
+                                                  <SelectItem key={group} value={group}>
+                                                    {group}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <Button type="submit">Update User</Button>
+                                        </div>
+                                      </form>
+                                    </DialogContent>
+                                  </Dialog>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      if (window.confirm('Are you sure you want to delete this user?')) {
+                                        deleteUserMutation.mutate(user.id);
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
-                  <ul className="space-y-2">
-                    <li className="flex items-center text-gray-700">
-                      <FaUserPlus className="text-fire-red mr-2" />
-                      Add New Users
-                    </li>
-                    <li className="flex items-center text-gray-700">
-                      <FaUserEdit className="text-fire-red mr-2" />
-                      Edit User Profiles
-                    </li>
-                    <li className="flex items-center text-gray-700">
-                      <FaChartLine className="text-fire-red mr-2" />
-                      Track User Progress
-                    </li>
-                  </ul>
-                  <Button className="mt-4 w-full bg-fire-red hover:bg-red-700">
-                    Manage Users
-                  </Button>
                 </CardContent>
               </Card>
+            </TabsContent>
 
-              {/* User List */}
-              <Card className="lg:col-span-2">
+            <TabsContent value="achievements">
+              <Card>
                 <CardHeader>
-                  <CardTitle>User List</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Achievement Management</CardTitle>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Achievement
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Create New Achievement</DialogTitle>
+                          <DialogDescription>
+                            Add a new achievement that users can earn through various activities.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          const formData = new FormData(e.currentTarget);
+                          createAchievementMutation.mutate({
+                            title: formData.get('title'),
+                            description: formData.get('description'),
+                            icon: formData.get('icon'),
+                            condition: formData.get('condition'),
+                            threshold: parseInt(formData.get('threshold') as string),
+                          });
+                          (e.target as HTMLFormElement).reset();
+                        }}>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="title">Title</Label>
+                              <Input id="title" name="title" required />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="description">Description</Label>
+                              <Textarea id="description" name="description" required />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="icon">Icon</Label>
+                              <Input id="icon" name="icon" placeholder="e.g., FaTrophy" required />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="condition">Condition</Label>
+                                <select 
+                                  id="condition" 
+                                  name="condition" 
+                                  className="w-full rounded-md border border-input px-3 py-2"
+                                  required
+                                >
+                                  <option value="QUIZZES_COMPLETED">Quizzes Completed</option>
+                                  <option value="CROSSWORDS_COMPLETED">Crosswords Completed</option>
+                                  <option value="WORD_PICS_COMPLETED">Word Pics Completed</option>
+                                  <option value="WORD_SCRAMBLES_COMPLETED">Word Scrambles Completed</option>
+                                  <option value="PERFECT_SCORE">Perfect Score</option>
+                                  <option value="ACCOUNT_CREATED">Account Created</option>
+                                </select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="threshold">Threshold</Label>
+                                <Input 
+                                  id="threshold" 
+                                  name="threshold" 
+                                  type="number" 
+                                  min="1" 
+                                  required 
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button type="submit">Create Achievement</Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {usersLoading ? (
-                    <p>Loading users...</p>
-                  ) : users && users.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age Group</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {users.map((user: any) => (
-                            <tr key={user.id}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {user.name}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {user.username}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {user.ageGroup}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                                  <FaTrash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {isLoadingAchievements ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-20 w-full" />
+                      ))}
+                    </div>
+                  ) : achievements?.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Trophy className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium">No Achievements</h3>
+                      <p className="text-sm text-gray-500">Start by creating your first achievement.</p>
                     </div>
                   ) : (
-                    <p>No users found.</p>
+                    <div className="space-y-4">
+                      {achievements?.map((achievement) => (
+                        <div
+                          key={achievement.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                              <Trophy className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium">{achievement.title}</h4>
+                              <p className="text-sm text-gray-500">{achievement.description}</p>
+                              <div className="flex gap-2 mt-1">
+                                <Badge variant="outline">{achievement.condition}</Badge>
+                                <Badge variant="outline">Threshold: {achievement.threshold}</Badge>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to delete this achievement?')) {
+                                deleteAchievementMutation.mutate(achievement.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          {/* ANALYTICS TAB */}
-          <TabsContent value="analytics">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Reports Card */}
+            <TabsContent value="reports">
               <Card>
                 <CardHeader>
                   <CardTitle>Reports</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-4">
-                    <h3 className="font-semibold text-gray-700 mb-1">Available Reports:</h3>
-                  </div>
-                  <ul className="space-y-2">
-                    <li className="flex items-center text-gray-700">
-                      <FaChartLine className="text-fire-red mr-2" />
-                      Usage Statistics
-                    </li>
-                    <li className="flex items-center text-gray-700">
-                      <FaMedal className="text-fire-red mr-2" />
-                      Achievement Tracking
-                    </li>
-                  </ul>
-                  <Button className="mt-4 w-full bg-fire-red hover:bg-red-700">
-                    View Reports
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Game Usage Stats */}
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>Game Usage Statistics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 bg-white rounded flex items-center justify-center border">
-                    <div className="text-center text-gray-500">
-                      <p className="mb-2">Game usage chart will appear here</p>
-                      <p className="text-sm">This feature is under development</p>
-                    </div>
+                  <div className="space-y-4">
+                    <Button onClick={() => exportDataMutation.mutate('users')}>
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Export User Data
+                    </Button>
+                    <Button onClick={() => exportDataMutation.mutate('content')}>
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Export Content Data
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          {/* ACHIEVEMENTS TAB */}
-          <TabsContent value="achievements">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <TabsContent value="settings">
               <Card>
                 <CardHeader>
-                  <CardTitle>Achievement Management</CardTitle>
+                  <CardTitle>Database Management</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-700 mb-4">
-                    Create and manage achievements to motivate users in their fire safety learning journey.
-                  </p>
-                  <Button className="w-full bg-fire-red hover:bg-red-700">
-                      Create Achievement
-                  </Button>
+                  <div className="space-y-4">
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => {
+                        if (window.confirm('Are you sure? This action cannot be undone.')) {
+                          databaseActionMutation.mutate('clear-progress');
+                        }
+                      }}
+                    >
+                      <Database className="mr-2 h-4 w-4" />
+                      Clear User Progress
+                    </Button>
+                    <Button 
+                      variant="destructive"
+                      onClick={() => {
+                        if (window.confirm('Are you sure? This will reset all data!')) {
+                          databaseActionMutation.mutate('reset');
+                        }
+                      }}
+                    >
+                      <Database className="mr-2 h-4 w-4" />
+                      Reset Database
+                    </Button>
+                    <Button
+                      onClick={() => databaseActionMutation.mutate('seed')}
+                    >
+                      <Database className="mr-2 h-4 w-4" />
+                      Seed Sample Data
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
-              <Card className="lg:col-span-2">
+            </TabsContent>
+
+            <TabsContent value="content">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Achievement List</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Educational Content</CardTitle>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Content
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add New Content</DialogTitle>
+                          <DialogDescription>
+                            Create new educational content for the selected game type.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          const formData = new FormData(e.currentTarget);
+                          createContentMutation.mutate({
+                            type: formData.get('type') as string,
+                            data: {
+                              title: formData.get('title'),
+                              description: formData.get('description'),
+                              content: formData.get('content'),
+                              difficulty: formData.get('difficulty'),
+                              ageGroup: formData.get('ageGroup'),
+                            }
+                          });
+                          (e.target as HTMLFormElement).reset();
+                        }}>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="type">Game Type</Label>
+                              <Select name="type" required>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select game type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(gameTypes).map(([key, value]) => (
+                                    <SelectItem key={key} value={key}>{value}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="title">Title</Label>
+                              <Input id="title" name="title" required />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="description">Description</Label>
+                              <Textarea id="description" name="description" required />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="content">Content</Label>
+                              <Textarea 
+                                id="content" 
+                                name="content" 
+                                required 
+                                placeholder="For quizzes: Enter questions and answers&#10;For crosswords: Enter words and clues&#10;For word scrambles: Enter words to scramble&#10;For word pics: Enter words and image URLs"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="difficulty">Difficulty</Label>
+                                <Select name="difficulty" required>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select difficulty" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="easy">Easy</SelectItem>
+                                    <SelectItem value="medium">Medium</SelectItem>
+                                    <SelectItem value="hard">Hard</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="ageGroup">Age Group</Label>
+                                <Select name="ageGroup" required>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select age group" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.values(ageGroups).map(group => (
+                                      <SelectItem key={group} value={group}>{group}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <Button type="submit" className="w-full">
+                              Create Content
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {achievementsLoading ? (
-                    <p>Loading achievements...</p>
-                  ) : achievements && achievements.length > 0 ? (
-                    <Accordion type="single" collapsible className="w-full">
-                      {achievements.map((achievement) => (
-                        <AccordionItem key={achievement.id} value={`achievement-${achievement.id}`}>
-                          <AccordionTrigger className="hover:no-underline">
-                            <div className="flex items-center">
-                              <FaTrophy className="text-yellow-500 mr-2" />
-                              <span>{achievement.title}</span>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="p-4 bg-gray-50 rounded-md">
-                              <p className="text-gray-700 mb-2">{achievement.description}</p>
-                              <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                                <span className="bg-gray-200 px-2 py-1 rounded">
-                                  Condition: {achievement.criteria}
-                                </span>
-                                <span className="bg-gray-200 px-2 py-1 rounded">
-                                  Points: {achievement.points}
-                                </span>
-                              </div>
-                              <div className="flex mt-4 gap-2">
-                                <Button variant="outline" size="sm">
-                                  <FaEdit className="mr-2" /> Edit
-                                </Button>
-                                <Button variant="outline" size="sm" className="text-red-500">
-                                  <FaTrash className="mr-2" /> Delete
-                                </Button>
-                              </div>
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
+                  <Tabs defaultValue="quizzes">
+                    <TabsList>
+                      {Object.entries(gameTypes).map(([key, value]) => (
+                        <TabsTrigger key={key} value={key.toLowerCase()}>{value}</TabsTrigger>
                       ))}
-                    </Accordion>
-                  ) : (
-                    // Default achievements if none are loaded
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="achievement-1">
-                        <AccordionTrigger className="hover:no-underline">
-                          <div className="flex items-center">
-                            <FaTrophy className="text-yellow-500 mr-2" />
-                            <span>First Day</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="p-4 bg-gray-50 rounded-md">
-                            <p className="text-gray-700 mb-2">Awarded for creating an account and starting your fire safety journey!</p>
-                            <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                              <span className="bg-gray-200 px-2 py-1 rounded">
-                                Condition: ACCOUNT_CREATED
-                              </span>
-                              <span className="bg-gray-200 px-2 py-1 rounded">
-                                Threshold: 1
-                              </span>
-                            </div>
-                            <div className="flex mt-4 gap-2">
-                              <Button variant="outline" size="sm">
-                                <FaEdit className="mr-2" /> Edit
-                              </Button>
-                              <Button variant="outline" size="sm" className="text-red-500">
-                                <FaTrash className="mr-2" /> Delete
-                              </Button>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                      <AccordionItem value="achievement-2">
-                        <AccordionTrigger className="hover:no-underline">
-                          <div className="flex items-center">
-                            <FaTrophy className="text-yellow-500 mr-2" />
-                            <span>Quiz Master</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="p-4 bg-gray-50 rounded-md">
-                            <p className="text-gray-700 mb-2">Complete 5 quizzes to earn this badge!</p>
-                            <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                              <span className="bg-gray-200 px-2 py-1 rounded">
-                                Condition: QUIZZES_COMPLETED
-                              </span>
-                              <span className="bg-gray-200 px-2 py-1 rounded">
-                                Threshold: 5
-                              </span>
-                            </div>
-                            <div className="flex mt-4 gap-2">
-                              <Button variant="outline" size="sm">
-                                <FaEdit className="mr-2" /> Edit
-                              </Button>
-                              <Button variant="outline" size="sm" className="text-red-500">
-                                <FaTrash className="mr-2" /> Delete
-                              </Button>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
+                    </TabsList>
+                    {Object.entries(gameTypes).map(([key, value]) => (
+                      <TabsContent key={key} value={key.toLowerCase()}>
+                        <div className="rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Title</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead>Difficulty</TableHead>
+                                <TableHead>Age Group</TableHead>
+                                <TableHead>Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {/* Add content listing here */}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </TabsContent>
+                    ))}
+                  </Tabs>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          {/* SETTINGS TAB */}
-          <TabsContent value="settings">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <TabsContent value="metrics">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Game Completion Rates</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {Object.entries(gameTypes).map(([type, label]) => {
+                        const completionRate = gameMetrics.completionRates[type] ?? 0;
+                        
+                        return (
+                          <div key={type} className="space-y-2">
+                            <div className="flex justify-between">
+                              <span>{label}</span>
+                              <span>{completionRate}%</span>
+                            </div>
+                            <Progress value={completionRate} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Average Scores by Age Group</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {Object.values(ageGroups).map((group) => {
+                        const averageScore = gameMetrics?.averageScores?.[group] ?? 0;
+                        
+                        return (
+                          <div key={group} className="space-y-2">
+                            <div className="flex justify-between">
+                              <span>{group}</span>
+                              <span>{averageScore}%</span>
+                            </div>
+                            <Progress value={averageScore} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="feedback">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FaTools className="text-fire-red mr-2" />
-                    Settings
-                  </CardTitle>
+                  <CardTitle>User Feedback and Reports</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 border border-gray-200 rounded-md">
-                      <h3 className="font-semibold mb-2">Application Settings</h3>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 block mb-1">
-                            Site Title
-                          </label>
-                          <input
-                            type="text"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                            defaultValue="Fire Safety Heroes"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 block mb-1">
-                            Contact Email
-                          </label>
-                          <input
-                            type="email"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                            defaultValue="contact@firesafetyheroes.com"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 block mb-1">
-                            Maximum Users
-                          </label>
-                          <input
-                            type="number"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                            defaultValue="1000"
-                          />
-                        </div>
-                      </div>
-                      <Button className="w-full bg-fire-red hover:bg-red-700">
-                        Save Settings
-                      </Button>
-                    </div>
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Game Type</TableHead>
+                        <TableHead>Feedback</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {/* Add feedback data mapping */}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FaTools className="text-fire-red mr-2" />
-                    Admin Actions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 border border-amber-200 bg-amber-50 rounded-md">
-                      <h3 className="font-semibold mb-2">Database Management</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        These actions affect the database and cannot be undone. Use with caution.
-                      </p>
-                      <div className="space-y-2">
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={handleSeedData}
-                        >
-                          Seed Sample Data
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          className="w-full text-amber-700 border-amber-700"
-                        >
-                          Clear User Progress
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          className="w-full text-red-700 border-red-700"
-                        >
-                          Reset Database
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="p-4 border border-gray-200 bg-gray-50 rounded-md">
-                      <h3 className="font-semibold mb-2">Import/Export</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Transfer data in and out of the application.
-                      </p>
-                      <div className="space-y-2">
-                        <Button variant="outline" className="w-full">
-                          Export Users
-                        </Button>
-
-                        <Button variant="outline" className="w-full">
-                          Export Content
-                        </Button>
-
-                        <Button variant="outline" className="w-full">
-                          Import Content
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </main>
-
-      <Footer />
-    </div>
+            </TabsContent>
+          </Tabs>
+        </main>
+        <Footer />
+      </div>
+    </AdminGuard>
   );
 }

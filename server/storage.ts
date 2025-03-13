@@ -18,6 +18,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, data: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
 
   // Quiz operations
   getQuizzes(ageGroup?: string): Promise<Quiz[]>;
@@ -56,8 +57,27 @@ export interface IStorage {
   awardAchievement(userId: number, achievementId: number): Promise<UserAchievement>;
   removeUserAchievement(userId: number, achievementId: number): Promise<boolean>;
 
-  // Session store
   sessionStore: session.SessionStore;
+
+  getPerformanceMetrics(): Promise<{
+    responseTime: number;
+    activeUsers: number;
+    completionRates: { [gameType: string]: number };
+    errorRates: { [endpoint: string]: number };
+    resourceUsage: {
+      memory: number;
+      cpu: number;
+    };
+  }>;
+
+  getAllProgress(): Promise<Array<{
+    userId: string;
+    gameType: string;
+    gameId: number;
+    score: number;
+    completed: boolean;
+    ageGroup: string;
+  }>>;
 }
 
 export class MemStorage implements IStorage {
@@ -70,6 +90,12 @@ export class MemStorage implements IStorage {
   private userProgress: Map<number, UserProgress>;
   private achievements: Map<number, Achievement>;
   private userAchievements: Map<number, UserAchievement>;
+  private sessions: Map<string, any>;
+  private metrics: {
+    responseTimes: number[];
+    errors: Map<string, number>;
+    completions: Map<string, { total: number; completed: number }>;
+  };
 
   sessionStore: session.SessionStore;
 
@@ -93,26 +119,19 @@ export class MemStorage implements IStorage {
     this.userProgress = new Map();
     this.achievements = new Map();
     this.userAchievements = new Map();
+    this.sessions = new Map();
+    this.metrics = {
+      responseTimes: [],
+      errors: new Map(),
+      completions: new Map(Object.values(gameTypes).map(type => [type, { total: 0, completed: 0 }]))
+    };
 
-    this.currentUserId = 1;
-    this.currentQuizId = 1;
-    this.currentQuizQuestionId = 1;
-    this.currentCrosswordId = 1;
-    this.currentWordScrambleId = 1;
-    this.currentWordPicId = 1;
-    this.currentUserProgressId = 1;
-    this.currentAchievementId = 1;
-    this.currentUserAchievementId = 1;
-
+    this.seedAchievements();
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
-
-    // Seed some default achievements
-    this.seedAchievements();
   }
 
-  // User operations
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -140,7 +159,15 @@ export class MemStorage implements IStorage {
     return updatedUser;
   }
 
-  // Quiz operations
+  async deleteUser(id: number): Promise<boolean> {
+    const exists = this.users.has(id);
+    if (exists) {
+      this.users.delete(id);
+      return true;
+    }
+    return false;
+  }
+
   async getQuizzes(ageGroup?: string): Promise<Quiz[]> {
     const quizzes = Array.from(this.quizzes.values());
     if (ageGroup) {
@@ -160,7 +187,6 @@ export class MemStorage implements IStorage {
     return quiz;
   }
 
-  // Quiz question operations
   async getQuizQuestions(quizId: number): Promise<QuizQuestion[]> {
     return Array.from(this.quizQuestions.values()).filter(
       (q) => q.quizId === quizId,
@@ -174,7 +200,6 @@ export class MemStorage implements IStorage {
     return question;
   }
 
-  // Crossword operations
   async getCrosswords(ageGroup?: string): Promise<Crossword[]> {
     const crosswords = Array.from(this.crosswords.values());
     if (ageGroup) {
@@ -194,7 +219,6 @@ export class MemStorage implements IStorage {
     return crossword;
   }
 
-  // Word scramble operations
   async getWordScrambles(ageGroup?: string): Promise<WordScramble[]> {
     const wordScrambles = Array.from(this.wordScrambles.values());
     if (ageGroup) {
@@ -214,7 +238,6 @@ export class MemStorage implements IStorage {
     return wordScramble;
   }
 
-  // Word pics operations
   async getWordPics(ageGroup?: string): Promise<WordPic[]> {
     const wordPics = Array.from(this.wordPics.values());
     if (ageGroup) {
@@ -234,7 +257,6 @@ export class MemStorage implements IStorage {
     return wordPic;
   }
 
-  // User progress operations
   async getUserProgress(userId: number): Promise<UserProgress[]> {
     return Array.from(this.userProgress.values()).filter(
       (up) => up.userId === userId,
@@ -242,7 +264,7 @@ export class MemStorage implements IStorage {
   }
 
   async updateUserProgress(userId: number, gameType: string, gameId: number, data: Partial<UserProgress>): Promise<UserProgress> {
-    // Check if progress exists
+
     const existingProgress = Array.from(this.userProgress.values()).find(
       (up) => up.userId === userId && up.gameType === gameType && up.gameId === gameId,
     );
@@ -267,7 +289,6 @@ export class MemStorage implements IStorage {
     }
   }
 
-  // Achievement operations
   async getAchievements(): Promise<Achievement[]> {
     return Array.from(this.achievements.values());
   }
@@ -294,7 +315,6 @@ export class MemStorage implements IStorage {
 
     this.achievements.delete(id);
 
-    // Also delete related user achievements
     const userAchievementsToDelete = Array.from(this.userAchievements.values())
       .filter(userAchievement => userAchievement.achievementId === id);
 
@@ -315,7 +335,6 @@ export class MemStorage implements IStorage {
     userId: number,
     achievementId: number,
   ): Promise<UserAchievement> {
-    // Check if already awarded
     const existingAward = Array.from(this.userAchievements.values()).find(
       (ua) => ua.userId === userId && ua.achievementId === achievementId,
     );
@@ -348,7 +367,6 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  // Helper to seed achievements
   async seedAchievements() {
     if (this.achievements.size === 0) {
       const achievements = [
@@ -400,6 +418,195 @@ export class MemStorage implements IStorage {
         await this.createAchievement(achievement);
       }
     }
+  }
+
+  async getUserCount(): Promise<number> {
+    try {
+      return this.users.size;
+      
+    } catch (error) {
+      console.error('Error getting user count:', error);
+      throw error;
+    }
+  }
+
+  async getActiveSessionCount(): Promise<number> {
+    try {
+      return this.sessions.size;
+    } catch (error) {
+      console.error('Error getting active session count:', error);
+      return 0;
+    }
+  }
+
+  async getGameCounts(): Promise<{ [key: string]: number }> {
+    try {
+      return {
+        quizzes: this.quizzes.size,
+        crosswords: this.crosswords.size,
+        wordScrambles: this.wordScrambles.size,
+        wordPics: this.wordPics.size
+      };
+    } catch (error) {
+      console.error('Error getting game counts:', error);
+      throw error;
+    }
+  }
+
+  async getPerformanceMetrics() {
+    try {
+      // Calculate average response time
+      const avgResponseTime = this.metrics.responseTimes.length > 0
+        ? this.metrics.responseTimes.reduce((a, b) => a + b, 0) / this.metrics.responseTimes.length
+        : 0;
+
+      // Calculate completion rates for each game type
+      const completionRates: { [key: string]: number } = {};
+      this.metrics.completions.forEach((value, gameType) => {
+        completionRates[gameType] = value.total > 0
+          ? (value.completed / value.total) * 100
+          : 0;
+      });
+
+      // Calculate error rates
+      const errorRates: { [key: string]: number } = {};
+      this.metrics.errors.forEach((count, endpoint) => {
+        errorRates[endpoint] = count;
+      });
+
+      // Get active users (users with activity in the last hour)
+      const activeUsers = await this.getActiveUserCount();
+
+      return {
+        responseTime: avgResponseTime,
+        activeUsers,
+        completionRates,
+        errorRates,
+        resourceUsage: {
+          memory: process.memoryUsage().heapUsed / 1024 / 1024, // MB
+          cpu: process.cpuUsage().user / 1000000 // seconds
+        }
+      };
+    } catch (error) {
+      console.error('Error getting performance metrics:', error);
+      throw error;
+    }
+  }
+
+  private async getActiveUserCount(): Promise<number> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const activeUsers = Array.from(this.users.values()).filter(user => {
+      const lastActivity = user.lastActivityAt || user.createdAt;
+      return lastActivity >= oneHourAgo;
+    });
+    return activeUsers.length;
+  }
+
+  async trackResponseTime(time: number) {
+    this.metrics.responseTimes.push(time);
+    // Keep only last 1000 measurements
+    if (this.metrics.responseTimes.length > 1000) {
+      this.metrics.responseTimes.shift();
+    }
+  }
+
+  async trackError(endpoint: string) {
+    const current = this.metrics.errors.get(endpoint) || 0;
+    this.metrics.errors.set(endpoint, current + 1);
+  }
+
+  async trackGameCompletion(gameType: string, completed: boolean) {
+    const stats = this.metrics.completions.get(gameType) || { total: 0, completed: 0 };
+    stats.total += 1;
+    if (completed) {
+      stats.completed += 1;
+    }
+    this.metrics.completions.set(gameType, stats);
+  }
+
+  async getAllProgress() {
+    try {
+      const allProgress: any[] = [];
+      
+      for (const [userId, progress] of this.progress) {
+        const user = this.users.get(userId);
+        if (!user) continue;
+        
+        progress.forEach(p => {
+          allProgress.push({
+            ...p,
+            ageGroup: user.ageGroup
+          });
+        });
+      }
+      
+      return allProgress;
+    } catch (error) {
+      console.error('Error getting all progress:', error);
+      throw error;
+    }
+  }
+
+  async trackSession(sessionId: string, session: any) {
+    this.sessions.set(sessionId, session);
+  }
+
+  async removeSession(sessionId: string) {
+    this.sessions.delete(sessionId);
+  }
+
+  async getAnalytics() {
+    try {
+      const totalUsers = await this.getUserCount();
+      const activeSessions = await this.getActiveSessionCount();
+      const gameCounts = await this.getGameCounts();
+      
+      return {
+        totalUsers,
+        activeSessions,
+        gameCounts,
+        completionRate: await this.calculateCompletionRate(),
+        avgSessionDuration: await this.calculateAvgSessionDuration(),
+        returnRate: await this.calculateReturnRate(),
+        peakActivityTime: await this.calculatePeakActivityTime()
+      };
+    } catch (error) {
+      console.error('Error generating analytics:', error);
+      return {
+        totalUsers: 0,
+        activeSessions: 0,
+        gameCounts: {
+          quizzes: 0,
+          crosswords: 0,
+          wordScrambles: 0,
+          wordPics: 0
+        },
+        completionRate: 0,
+        avgSessionDuration: 0,
+        returnRate: 0,
+        peakActivityTime: "N/A"
+      };
+    }
+  }
+
+  private async calculateCompletionRate(): Promise<number> {
+    // Implement completion rate calculation
+    return 0;
+  }
+
+  private async calculateAvgSessionDuration(): Promise<number> {
+    // Implement average session duration calculation
+    return 0;
+  }
+
+  private async calculateReturnRate(): Promise<number> {
+    // Implement return rate calculation
+    return 0;
+  }
+
+  private async calculatePeakActivityTime(): Promise<string> {
+    // Implement peak activity time calculation
+    return "N/A";
   }
 }
 

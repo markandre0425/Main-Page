@@ -26,6 +26,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize game data if none exists
   await initializeGameData();
 
+  // Add timing middleware
+  app.use(async (req, res, next) => {
+    const start = Date.now();
+    res.on('finish', async () => {
+      const duration = Date.now() - start;
+      await storage.trackResponseTime(duration);
+      
+      if (res.statusCode >= 400) {
+        await storage.trackError(req.path);
+      }
+    });
+    next();
+  });
+
   // API Routes
 
   // Age group validation middleware
@@ -289,6 +303,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check for achievements
       await checkAchievements(req.user!.id);
+
+      // Track game completion
+      await storage.trackGameCompletion(gameType, completed);
     } catch (err) {
       next(err);
     }
@@ -390,46 +407,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin routes
 
-  // Get all users (admin only)
   app.get("/api/admin/users", requireAdmin, async (req, res, next) => {
     try {
-      const users = await storage.getAllUsers();
-      // Remove passwords from response
-      const sanitizedUsers = users.map(({ password, ...user }) => user);
-      res.json(sanitizedUsers);
+      const users = Array.from(storage.users.values()).map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      res.json(users);
     } catch (err) {
       next(err);
     }
   });
 
-  // Get user count (admin only)
-  app.get("/api/admin/users/count", requireAdmin, async (req, res, next) => {
-    try {
-      const users = await storage.getAllUsers();
-      res.json({ count: users.length });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  // Create user (admin only)
   app.post("/api/admin/users", requireAdmin, async (req, res, next) => {
     try {
-      const { username, name, email, ageGroup, isAdmin } = req.body;
+      const { username, name, email, ageGroup } = req.body;
 
-      // Check if user exists
+      // Validate required fields
+      if (!username || !name || !email || !ageGroup) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
-      // Use a default password (in a real app, you'd send an invite with a temporary password)
+      // Use a default password (in a real app, you'd want to generate a random password
+      // and send it via email to the user)
       const password = "password123";
 
-      // Create user
       const user = await storage.createUser({
         username,
-        password, // In a real app, this would be hashed
+        password,
         name,
         email,
         ageGroup
@@ -444,23 +454,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete user (admin only)
   app.delete("/api/admin/users/:id", requireAdmin, async (req, res, next) => {
     try {
       const userId = parseInt(req.params.id);
-
-      // Don't allow deleting the admin user
-      if (userId === 1) {
-        return res.status(403).json({ message: "Cannot delete admin user" });
-      }
-
       const success = await storage.deleteUser(userId);
-
-      if (!success) {
-        return res.status(404).json({ message: "User not found" });
+      if (success) {
+        res.status(204).send();
+      } else {
+        res.status(404).json({ message: "User not found" });
       }
-
-      res.json({ message: "User deleted successfully" });
     } catch (err) {
       next(err);
     }
@@ -551,6 +553,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       next(err);
     }
+  });
+
+  // Analytics endpoints
+  app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
+    try {
+      const analytics = await storage.getAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      res.status(500).json({ 
+        error: "Failed to fetch analytics",
+        details: error.message 
+      });
+    }
+  });
+
+  // Add session tracking middleware
+  app.use((req, res, next) => {
+    if (req.session?.id) {
+      storage.trackSession(req.session.id, req.session).catch(err => {
+        console.error('Error tracking session:', err);
+      });
+    }
+    next();
+  });
+
+  // Clean up sessions on destroy
+  app.use((req, res, next) => {
+    const originalDestroy = req.session.destroy;
+    if (originalDestroy) {
+      req.session.destroy = function(cb) {
+        storage.removeSession(req.session.id).catch(err => {
+          console.error('Error removing session:', err);
+        });
+        originalDestroy.call(this, cb);
+      };
+    }
+    next();
+  });
+
+  // Game counts endpoint
+  app.get("/api/admin/games/count", requireAdmin, async (req, res) => {
+    try {
+      const counts = await storage.getGameCounts();
+      res.json(counts);
+    } catch (error) {
+      console.error('Error fetching game counts:', error);
+      res.status(500).json({ error: "Failed to fetch game counts" });
+    }
+  });
+
+  // Settings endpoints
+  app.put("/api/admin/settings", requireAdmin, async (req, res, next) => {
+    try {
+      const settings = await storage.updateSettings(req.body);
+      res.json(settings);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Database management endpoints
+  app.post("/api/admin/database/:action", requireAdmin, async (req, res, next) => {
+    try {
+      const { action } = req.params;
+      switch (action) {
+        case 'seed':
+          await storage.seedData();
+          break;
+        case 'clear-progress':
+          await storage.clearUserProgress();
+          break;
+        case 'reset':
+          await storage.resetDatabase();
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid action" });
+      }
+      res.json({ message: "Action completed successfully" });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Export endpoints
+  app.get("/api/admin/export/:type", requireAdmin, async (req, res, next) => {
+    try {
+      const { type } = req.params;
+      let data;
+      switch (type) {
+        case 'users':
+          data = await storage.exportUsers();
+          break;
+        case 'content':
+          data = await storage.exportContent();
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid export type" });
+      }
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Report endpoints
+  app.get("/api/admin/reports/:type", requireAdmin, async (req, res, next) => {
+    try {
+      const { type } = req.params;
+      let report;
+      switch (type) {
+        case 'usage-statistics':
+          report = await storage.generateUsageReport();
+          break;
+        case 'achievement-tracking':
+          report = await storage.generateAchievementReport();
+          break;
+        case 'game-usage':
+          report = await storage.generateGameUsageReport();
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid report type" });
+      }
+      res.json(report);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Content Management
+  app.post("/api/admin/content/:type", requireAdmin, async (req, res) => {
+    try {
+      const { type } = req.params;
+      const content = await storage.createContent(type, req.body);
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create content" });
+    }
+  });
+
+  // Get content by type
+  app.get("/api/admin/content/:type", requireAdmin, async (req, res) => {
+    try {
+      const { type } = req.params;
+      const content = await storage.getContent(type);
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch content" });
+    }
+  });
+
+  // Performance Metrics
+  app.get("/api/admin/metrics", requireAdmin, async (req, res) => {
+    const metrics = await storage.getPerformanceMetrics();
+    res.json(metrics);
+  });
+
+  app.get("/api/admin/metrics", requireAdmin, async (req, res, next) => {
+    try {
+      const allProgress = await storage.getAllProgress();
+      
+      // Calculate completion rates by game type
+      const completionRates = Object.values(gameTypes).reduce((acc, gameType) => {
+        const gameProgress = allProgress.filter(p => p.gameType === gameType);
+        const completed = gameProgress.filter(p => p.completed).length;
+        const total = gameProgress.length || 1;
+        acc[gameType] = Math.round((completed / total) * 100);
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Calculate average scores by age group
+      const averageScores = Object.values(ageGroups).reduce((acc, group) => {
+        const groupProgress = allProgress.filter(p => p.ageGroup === group);
+        const totalScore = groupProgress.reduce((sum, p) => sum + (p.score || 0), 0);
+        const count = groupProgress.length || 1;
+        acc[group] = Math.round(totalScore / count);
+        return acc;
+      }, {} as Record<string, number>);
+
+      res.json({
+        completionRates,
+        averageScores
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Feedback Management
+  app.get("/api/admin/feedback", requireAdmin, async (req, res) => {
+    const feedback = await storage.getFeedback();
+    res.json(feedback);
+  });
+
+  // System Notifications
+  app.get("/api/admin/notifications", requireAdmin, async (req, res) => {
+    const notifications = await storage.getSystemNotifications();
+    res.json(notifications);
   });
 
   // Create HTTP server
