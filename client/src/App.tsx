@@ -1,58 +1,119 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
-import HomePage from "@/pages/home-page";
+import Home from "@/pages/Home";
+import MissionDetail from "@/pages/MissionDetail";
+import MiniGamePage from "@/pages/MiniGamePage";
+import AvatarPage from "@/pages/AvatarPage";
+import RewardsPage from "@/pages/RewardsPage";
 import AuthPage from "@/pages/auth-page";
-import GamesPage from "@/pages/games-page";
-import QuizGame from "@/pages/quiz-game";
-import CrosswordGame from "@/pages/crossword-game";
-import WordPicsGame from "@/pages/word-pics-game";
-import WordScrambleGame from "@/pages/word-scramble-game";
-import AdminDashboard from "@/pages/admin-dashboard";
-import ProgressPage from "@/pages/progress-page";
-import AchievementsPage from "@/pages/achievements-page";
-import AboutPage from "@/pages/about-page";
-import ProfilePage from "@/pages/profile-page";
-import ResourcesPage from "@/pages/resources-page";
-import { ProtectedRoute } from "./lib/protected-route";
-import { useAuth } from "@/contexts/AuthContext";
+import AboutPage from "@/pages/AboutPage";
+import GamesPage from "@/pages/GamesPage";
+import SafetyTipsPage from "@/pages/SafetyTipsPage";
+import AdminDashboard from "@/pages/AdminDashboard";
+import ProfilePage from "@/pages/ProfilePage";
 import { useEffect } from "react";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
-  const [location] = useLocation();
-  const { user, isLoading } = useAuth();
-
-  // Log location changes and auth state 
-  useEffect(() => {
-    console.log(`Route changed to: ${location}, Auth state:`, { user, isLoading });
-  }, [location, user, isLoading]);
-
   return (
     <Switch>
-      <ProtectedRoute path="/" component={HomePage} />
+      {/* Public routes */}
       <Route path="/auth" component={AuthPage} />
       <Route path="/about" component={AboutPage} />
+      
+      {/* Protected routes */}
+      <ProtectedRoute path="/" component={Home} />
+      <ProtectedRoute path="/mission/:id" component={MissionDetail} />
+      <ProtectedRoute path="/minigame/:id" component={MiniGamePage} />
+      
+      {/* Game Routes */}
+      <ProtectedRoute path="/games/fire-extinguisher-simulator" component={MiniGamePage} />
+      <ProtectedRoute path="/games/hazard-identification" component={MiniGamePage} />
+      <ProtectedRoute path="/games/escape-plan-designer" component={MiniGamePage} />
+      <ProtectedRoute path="/games/fire-safety-quiz" component={MiniGamePage} />
+      <ProtectedRoute path="/avatar" component={AvatarPage} />
+      <ProtectedRoute path="/rewards" component={RewardsPage} />
       <ProtectedRoute path="/games" component={GamesPage} />
-      <ProtectedRoute path="/games/quiz/:id" component={QuizGame} />
-      <ProtectedRoute path="/games/crossword/:id" component={CrosswordGame} />
-      <ProtectedRoute path="/games/word-pics/:id" component={WordPicsGame} />
-      <ProtectedRoute path="/games/word-scramble/:id" component={WordScrambleGame} />
-      <ProtectedRoute path="/admin" component={AdminDashboard} />
+      <ProtectedRoute path="/safety-tips" component={SafetyTipsPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
-      <ProtectedRoute path="/progress" component={ProgressPage} />
-      <ProtectedRoute path="/achievements" component={AchievementsPage} />
-      <Route path="/resources" component={ResourcesPage} />
+      <ProtectedRoute path="/admin" component={AdminDashboard} adminOnly={true} />
+      
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 function App() {
+  // Add custom CSS for game animations
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes wiggle {
+        0%, 100% { transform: rotate(-3deg); }
+        50% { transform: rotate(3deg); }
+      }
+      @keyframes flame {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+      }
+      
+      .game-button {
+        transition: all 0.2s ease;
+      }
+      
+      .game-button:hover {
+        transform: scale(1.05);
+      }
+      
+      .game-button:active {
+        transform: scale(0.95);
+      }
+
+      .mission-card {
+        transition: all 0.3s ease;
+        transform-style: preserve-3d;
+      }
+      
+      .mission-card:hover {
+        transform: translateY(-10px) rotateY(5deg);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .avatar-item {
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+      
+      .avatar-item:hover {
+        transform: scale(1.1);
+      }
+
+      .animate-wiggle {
+        animation: wiggle 1s ease-in-out infinite;
+      }
+      
+      .animate-flame {
+        animation: flame 1.5s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+  
   return (
-    <>
-      <Router />
-      <Toaster />
-    </>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
