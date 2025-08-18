@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/use-auth";
 type Entry = {
   id: number;
   username: string;
+  displayName?: string;
+  fullName: string;
   timeMs: number;
   objectivesCollected: number;
   score: number;
@@ -113,7 +115,9 @@ export default function LeaderboardPage() {
           {/* Personal Stats Section */}
           {user && (
             <div className="bg-gradient-to-r from-[#FF5722] to-[#E91E63] text-white rounded-xl p-6 mb-6 shadow-lg">
-              <h2 className="text-xl font-bold mb-4">Your Performance</h2>
+              <h2 className="text-xl font-bold mb-4">
+                {user.displayName ? `${user.displayName}'s Performance` : 'Your Performance'}
+              </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold">{userRank || 'N/A'}</div>
@@ -159,7 +163,7 @@ export default function LeaderboardPage() {
                       <thead>
                         <tr className="border-b bg-gray-50">
                           <th className="p-3 font-semibold">Rank</th>
-                          <th className="p-3 font-semibold">Player</th>
+                          <th className="p-3 font-semibold">Player Name</th>
                           <th className="p-3 font-semibold">Time</th>
                           <th className="p-3 font-semibold">Objectives</th>
                           <th className="p-3 font-semibold">Score</th>
@@ -184,7 +188,7 @@ export default function LeaderboardPage() {
                               </div>
                             </td>
                             <td className="p-3 font-medium">
-                              {e.username}
+                              {e.fullName}
                               {user && e.username === user.username && (
                                 <span className="ml-2 text-blue-600 text-sm">(You)</span>
                               )}

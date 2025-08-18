@@ -28,7 +28,7 @@ export default function AboutPage() {
       name: "MARK ANDRE ACUAR",
       role: "Content Specialist",
       bio: "",
-      photoUrl: "/images/team/IMG_20250819_100000.jpg"
+      photoUrl: "/images/team/IMG_20250819_100000.JPG"
     }
   ];
 

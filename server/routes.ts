@@ -644,21 +644,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // LEADERBOARD ROUTES
   // Submit a leaderboard entry
-  app.post("/api/leaderboard", async (req, res) => {
+  app.post("/api/leaderboard", requireAuth, async (req, res) => {
     const schema = z.object({
       gameKey: z.string().min(1), // e.g. "maze"
-      username: z.string().min(1),
-      userId: z.number().optional(),
       timeMs: z.number().positive(),
       objectivesCollected: z.number().int().min(0),
     });
 
     try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
       const data = schema.parse(req.body);
       const entry = await storage.submitLeaderboardEntry({
         gameKey: data.gameKey,
-        username: data.username,
-        userId: data.userId,
+        username: user.username,
+        userId: user.id, // Automatically include the authenticated user's ID
         timeMs: data.timeMs,
         objectivesCollected: data.objectivesCollected,
       });

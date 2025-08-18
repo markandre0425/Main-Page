@@ -38,6 +38,8 @@ export interface LeaderboardEntry {
   gameKey: string; // e.g. "maze", "escape-room", "matching-cards"
   userId?: number;
   username: string; // fallback/display name
+  displayName?: string; // user's display name if available
+  fullName: string; // preferred display name (displayName or username)
   timeMs: number; // total time to finish (lower is better)
   objectivesCollected: number; // number of objectives collected (higher is better)
   score: number; // derived score, optional for display
@@ -67,13 +69,47 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // prune expired entries every 24h
     });
 
-    // Add default admin user with hashed password
+    // Add default APULA games that should always be available
     (async () => {
+      // Add default admin user with hashed password
       await this.createUser({
         username: 'admin1',
         password: await hashPassword('admin1'),
         isAdmin: true
       });
+
+      // Add default APULA games
+      await this.createGame({
+        title: "APULA Fire Safety Maze",
+        description: "Navigate through a 3D maze while learning fire safety principles. Collect fire extinguishers, safety tips, and escape safely!",
+        type: "3d-maze",
+        bestScore: null,
+        imageUrl: "https://placehold.co/400x300/FF5722/FFFFFF/svg?text=Fire+Safety+Maze",
+        externalUrl: "https://apula-maze.onrender.com",
+        isExternal: true
+      });
+
+      await this.createGame({
+        title: "APULA Matching Cards",
+        description: "Match fire safety concepts with their definitions. Learn important safety terms through fun card matching!",
+        type: "matching-cards",
+        bestScore: null,
+        imageUrl: "https://placehold.co/400x300/2196F3/FFFFFF/svg?text=Matching+Cards",
+        externalUrl: "https://apula-matching-cards.onrender.com",
+        isExternal: true
+      });
+
+      await this.createGame({
+        title: "3D Fire Main",
+        description: "Experience immersive 3D fire safety training with realistic scenarios and interactive learning modules.",
+        type: "3d-simulation",
+        bestScore: null,
+        imageUrl: "https://placehold.co/400x300/FF9800/FFFFFF/svg?text=3D+Fire+Main",
+        externalUrl: "https://threed-fire-main.onrender.com",
+        isExternal: true
+      });
+
+      console.log("✅ Default APULA games added successfully");
     })();
   }
 
@@ -229,7 +265,33 @@ export class MemStorage implements IStorage {
   async getLeaderboard(gameKey: string, limit = 50): Promise<LeaderboardEntry[]> {
     const list = this.leaderboards.get(gameKey) ?? [];
     const ranked = MemStorage.rankEntries(list);
-    return ranked.slice(0, limit);
+    
+    // Try to get display names for users if we have userIds
+    const entriesWithDisplayNames = await Promise.all(
+      ranked.slice(0, limit).map(async (entry) => {
+        if (entry.userId) {
+          try {
+            const user = await this.getUser(entry.userId);
+            if (user && user.displayName) {
+              return {
+                ...entry,
+                displayName: user.displayName,
+                fullName: user.displayName || entry.username
+              };
+            }
+          } catch (error) {
+            console.warn(`Failed to get user ${entry.userId}:`, error);
+          }
+        }
+        return {
+          ...entry,
+          displayName: entry.username,
+          fullName: entry.username
+        };
+      })
+    );
+    
+    return entriesWithDisplayNames;
   }
 }
 
@@ -289,6 +351,8 @@ export const storage = new MemStorage();
           gameKey: dbEntry.gameKey,
           userId: dbEntry.userId ?? undefined,
           username: dbEntry.username,
+          displayName: dbEntry.username, // Will be updated when retrieved
+          fullName: dbEntry.username, // Will be updated when retrieved
           timeMs: dbEntry.timeMs,
           objectivesCollected: dbEntry.objectivesCollected,
           score: dbEntry.score,
@@ -297,9 +361,21 @@ export const storage = new MemStorage();
       };
       
       mem.getLeaderboard = async (gameKey: string, limit = 50) => {
+        // Join with users table to get display names
         const rows = await db
-          .select()
+          .select({
+            id: lbTable.id,
+            gameKey: lbTable.gameKey,
+            userId: lbTable.userId,
+            username: lbTable.username,
+            timeMs: lbTable.timeMs,
+            objectivesCollected: lbTable.objectivesCollected,
+            score: lbTable.score,
+            createdAt: lbTable.createdAt,
+            displayName: users.displayName
+          })
           .from(lbTable)
+          .leftJoin(users, sql`${lbTable.userId} = ${users.id}`)
           .where(sql`${lbTable.gameKey} = ${gameKey}`)
           .limit(limit);
         
@@ -309,6 +385,8 @@ export const storage = new MemStorage();
           gameKey: row.gameKey,
           userId: row.userId ?? undefined,
           username: row.username,
+          displayName: row.displayName,
+          fullName: row.displayName || row.username,
           timeMs: row.timeMs,
           objectivesCollected: row.objectivesCollected,
           score: row.score,
