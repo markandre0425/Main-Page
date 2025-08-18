@@ -1,6 +1,7 @@
 import { users, type User, type InsertUser, type MiniGame, leaderboards as lbTable } from "@shared/schema";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
+import { Pool } from "pg";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { hashPassword } from "./auth";
@@ -233,29 +234,37 @@ export class MemStorage implements IStorage {
 
 export const storage = new MemStorage();
 
-// Optional: Postgres-backed leaderboard if DATABASE_URL is present
+// Optional: Postgres-backed leaderboard if DATABASE_URL is present (Render Postgres)
 try {
   if (process.env.DATABASE_URL) {
-    const db = drizzle(process.env.DATABASE_URL);
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const db = drizzle(pool);
 
     // Extend storage with DB methods for leaderboard
     const mem = storage as MemStorage;
     mem.submitLeaderboardEntry = async (entry) => {
       const createdAt = Date.now();
       const score = entry.objectivesCollected * 1000 - Math.floor(entry.timeMs / 100);
-      const inserted = await db.insert(lbTable).values({
-        gameKey: entry.gameKey,
-        userId: entry.userId ?? null,
-        username: entry.username,
-        timeMs: entry.timeMs,
-        objectivesCollected: entry.objectivesCollected,
-        score,
-        createdAt,
-      }).returning();
+      const inserted = await db
+        .insert(lbTable)
+        .values({
+          gameKey: entry.gameKey,
+          userId: entry.userId ?? null,
+          username: entry.username,
+          timeMs: entry.timeMs,
+          objectivesCollected: entry.objectivesCollected,
+          score,
+          createdAt,
+        })
+        .returning();
       return inserted[0] as any;
     };
     mem.getLeaderboard = async (gameKey: string, limit = 50) => {
-      const rows = await db.select().from(lbTable).where(sql`${lbTable.gameKey} = ${gameKey}`).limit(limit);
+      const rows = await db
+        .select()
+        .from(lbTable)
+        .where(sql`${lbTable.gameKey} = ${gameKey}`)
+        .limit(limit);
       // Sort same as memory (time asc, objectives desc, created asc)
       return rows.sort((a, b) => {
         if (a.timeMs !== b.timeMs) return a.timeMs - b.timeMs;
