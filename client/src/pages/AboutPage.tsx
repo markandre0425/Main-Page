@@ -25,10 +25,10 @@ export default function AboutPage() {
       photoUrl: "/images/team/2.jpg"
     },
     {
-      name: "FIARRAH MAE PALACI ULAT",
+      name: "MARK ANDRE ACUAR",
       role: "Content Specialist",
       bio: "",
-      photoUrl: "/images/team/1.jpg"
+      photoUrl: "/images/team/IMG_20250819_100000.jpg"
     }
   ];
 
