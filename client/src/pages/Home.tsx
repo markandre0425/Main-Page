@@ -5,6 +5,8 @@ import HeroSection from "@/components/home/HeroSection";
 import MissionSection from "@/components/home/MissionSection";
 import MiniGamesSection from "@/components/home/MiniGamesSection";
 import PersonalStats from "@/components/home/PersonalStats";
+import QuickSafetyTips from "@/components/home/QuickSafetyTips";
+import RecentAchievements from "@/components/home/RecentAchievements";
 
 export default function Home() {
   return (
@@ -15,6 +17,8 @@ export default function Home() {
         <GameNav />
         <HeroSection />
         <PersonalStats />
+        <QuickSafetyTips />
+        <RecentAchievements />
         <MissionSection />
         <MiniGamesSection />
       </main>

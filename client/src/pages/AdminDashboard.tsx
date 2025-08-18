@@ -195,7 +195,7 @@ export default function AdminDashboard() {
   const gamePlayStats = [
     { name: "Fire Extinguisher", value: 400 },
     { name: "Spot the Hazard", value: 300 },
-    { name: "Escape Plan", value: 200 },
+    
     { name: "Fire Quiz", value: 150 },
     { name: "Safety Match", value: 100 },
   ];

@@ -35,8 +35,8 @@ export function ProgressMap() {
     },
     {
       id: 2,
-      title: "Home Escape Plan",
-      description: "Create and practice a home escape plan.",
+          title: "Fire Safety Training",
+    description: "Complete comprehensive fire safety training.",
       x: 35,
       y: 30,
       completed: user?.completedMissions?.includes(2) || false,

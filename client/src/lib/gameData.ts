@@ -1,73 +1,10 @@
 import { Mission, MiniGame, Badge, SafetyTip, Hazard } from "@shared/schema";
 
 // Sample mission data
-export const missions: Mission[] = [
-  {
-    id: 1,
-    title: "Kitchen Fire Prevention",
-    description: "Learn how to prevent kitchen fires by identifying hazards and safe cooking practices.",
-    difficulty: "beginner",
-    points: 50,
-    imageUrl: "https://placehold.co/500x240/FF5722/FFFFFF/svg?text=Kitchen+Safety",
-    steps: [
-      { id: 1, title: "Learn", description: "Learn about common kitchen fire hazards", completed: false },
-      { id: 2, title: "Identify", description: "Identify unsafe cooking practices", completed: false },
-      { id: 3, title: "Practice", description: "Practice safe cooking techniques", completed: false },
-      { id: 4, title: "Quiz", description: "Test your knowledge", completed: false }
-    ]
-  },
-  {
-    id: 2,
-    title: "Building Escape",
-    description: "Navigate through a building during a fire emergency using escape routes and safety techniques.",
-    difficulty: "advanced",
-    points: 75,
-    imageUrl: "https://placehold.co/500x240/E91E63/FFFFFF/svg?text=Building+Escape",
-    steps: [
-      { id: 1, title: "Plan", description: "Create an escape plan", completed: false },
-      { id: 2, title: "Locate", description: "Locate emergency exits", completed: false },
-      { id: 3, title: "Practice", description: "Practice evacuation techniques", completed: false },
-      { id: 4, title: "Quiz", description: "Test your knowledge", completed: false }
-    ]
-  },
-  {
-    id: 3,
-    title: "Smoke Detector Check",
-    description: "Learn how to inspect, test, and maintain smoke detectors to keep your home safe.",
-    difficulty: "intermediate",
-    points: 60,
-    imageUrl: "https://placehold.co/500x240/FFC107/FFFFFF/svg?text=Smoke+Detector",
-    steps: [
-      { id: 1, title: "Learn", description: "Learn about smoke detector types", completed: false },
-      { id: 2, title: "Inspect", description: "Inspect smoke detectors", completed: false },
-      { id: 3, title: "Test", description: "Test smoke detectors", completed: false },
-      { id: 4, title: "Maintain", description: "Maintain smoke detectors", completed: false }
-    ]
-  }
-];
+export const missions: Mission[] = [];
 
 // Sample mini-game data
 export const miniGames: MiniGame[] = [
-  {
-    id: 1,
-    title: "Spot the Hazard",
-    description: "Find all the fire hazards in the room before time runs out!",
-    type: "spot-hazard",
-    bestScore: 7,
-    imageUrl: "https://placehold.co/500x300/2196F3/FFFFFF/svg?text=Spot+the+Hazard",
-    isExternal: false,
-    externalUrl: null
-  },
-  {
-    id: 2,
-    title: "Fire Extinguisher Training",
-    description: "Learn the PASS method and put out virtual fires with the correct technique!",
-    type: "extinguisher-training",
-    bestScore: null,
-    imageUrl: "https://placehold.co/500x300/FF5722/FFFFFF/svg?text=Fire+Extinguisher",
-    isExternal: false,
-    externalUrl: null
-  },
   {
     id: 3,
     title: "NFPA Fire Prevention Games",

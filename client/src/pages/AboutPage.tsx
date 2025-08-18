@@ -40,15 +40,9 @@ export default function AboutPage() {
         <GameNav />
         
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
-          <div className="relative">
-            <img 
-              src="https://placehold.co/1200x300/FF5722/FFFFFF/svg?text=About+Us"
-              alt="About Us Banner" 
-              className="w-full h-48 md:h-64 object-cover" 
-            />
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-              <h1 className="font-bangers text-4xl md:text-5xl text-white text-center">About APULA</h1>
-            </div>
+          <div className="bg-gradient-to-r from-[#FF5722] to-[#E64A19] p-8 md:p-12 text-center">
+            <h1 className="font-bangers text-4xl md:text-6xl text-white mb-3">About Us</h1>
+            <p className="text-white/90 text-lg md:text-xl font-fredoka">Empowering the next generation with fire safety knowledge</p>
           </div>
           
           <div className="p-6">
@@ -145,7 +139,7 @@ export default function AboutPage() {
                     <img 
                       src={member.photoUrl} 
                       alt={member.name} 
-                      className="w-full h-48 object-cover" 
+                      className="w-full h-80 object-cover" 
                     />
                     <div className="p-4">
                       <h3 className="font-fredoka text-xl text-gray-800">{member.name}</h3>

@@ -314,17 +314,22 @@ export const storage = new MemStorage();
       `);
 
       // Create a PostgreSQL session store
-      const PostgresStore = require('connect-pg-simple')(session);
-      const postgresSessionStore = new PostgresStore({
-        conObject: {
-          connectionString: process.env.DATABASE_URL,
-          ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-        },
-        tableName: 'sessions'
-      });
-
-      // Replace the memory session store with PostgreSQL store
-      storage.sessionStore = postgresSessionStore;
+      try {
+        const PostgresStore = (await import('connect-pg-simple')).default(session);
+        const postgresSessionStore = new PostgresStore({
+          conObject: {
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+          },
+          tableName: 'sessions'
+        });
+        
+        // Replace the memory session store with PostgreSQL store
+        storage.sessionStore = postgresSessionStore;
+      } catch (sessionError) {
+        console.warn("PostgreSQL session store unavailable, using memory store:", sessionError);
+        // Keep using the memory store if PostgreSQL session store fails
+      }
 
       // Extend storage with DB methods for leaderboard
       const mem = storage as MemStorage;

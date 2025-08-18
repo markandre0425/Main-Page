@@ -16,12 +16,12 @@ export default function ResourcesPage() {
       tags: ["Prevention", "Home", "Workplace"]
     },
     {
-      title: "Creating a Fire Escape Plan",
+      title: "Fire Safety for Families",
       type: "Video",
-      description: "Learn how to create and practice a home fire escape plan with your family.",
+      description: "Learn essential fire safety practices for the whole family.",
       link: "https://www.youtube.com/watch?v=X_NQEwA7-W0",
       icon: <Video className="h-6 w-6 text-red-500" />,
-      tags: ["Escape Plan", "Family", "Children"]
+      tags: ["Family Safety", "Fire Prevention", "Children"]
     },
     {
       title: "Fire Safety for Kids",

@@ -105,7 +105,6 @@ export default function LeaderboardPage() {
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF5722] focus:border-transparent"
               >
                 <option value="maze">Fire Safety Maze</option>
-                <option value="escape-room">Escape Room</option>
                 <option value="matching-cards">Matching Cards</option>
                 <option value="crossword">Crossword Puzzle</option>
               </select>

@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import SpotTheHazard from "../games/SpotTheHazard";
-import FireExtinguisherTraining from "../games/FireExtinguisherTraining";
 import { Link } from "wouter";
 import { MiniGame } from "@shared/schema";
 import { miniGames } from "@/lib/gameData";

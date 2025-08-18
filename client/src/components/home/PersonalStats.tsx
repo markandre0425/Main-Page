@@ -24,7 +24,7 @@ export default function PersonalStats() {
     // Fetch user's stats for all games
     const fetchStats = async () => {
       try {
-        const games = ['maze', 'escape-room', 'matching-cards', 'crossword'];
+        const games = ['maze', 'matching-cards', 'crossword', '3d-fire-main'];
         const statsPromises = games.map(async (gameKey) => {
           try {
             const response = await fetch(`/api/leaderboard/${gameKey}/personal`, {
@@ -71,12 +71,12 @@ export default function PersonalStats() {
   }, [user]);
 
   const getGameName = (gameKey: string) => {
-    const gameNames: Record<string, string> = {
-      'maze': 'Fire Safety Maze',
-      'escape-room': 'Escape Room',
-      'matching-cards': 'Matching Cards',
-      'crossword': 'Crossword Puzzle'
-    };
+      const gameNames: Record<string, string> = {
+    'maze': 'Fire Safety Maze',
+    'matching-cards': 'Matching Cards',
+    'crossword': 'Crossword Puzzle',
+    '3d-fire-main': '3D Fire Main'
+  };
     return gameNames[gameKey] || gameKey;
   };
 
