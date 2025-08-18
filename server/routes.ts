@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
@@ -7,30 +7,49 @@ import { insertUserSchema, type User } from "@shared/schema";
 import { setupAuth, hashPassword } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth/role middleware
+  const requireAuth: RequestHandler = (req, res, next) => {
+    const isAuthed = (req as any).isAuthenticated?.();
+    if (!isAuthed) return res.status(401).json({ message: "Unauthorized" });
+    next();
+  };
+
+  const requireAdmin: RequestHandler = (req, res, next) => {
+    const isAuthed = (req as any).isAuthenticated?.();
+    if (!isAuthed) return res.status(401).json({ message: "Unauthorized" });
+    const user = (req as any).user;
+    if (!user?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+    next();
+  };
   // Create default users at startup
   const createDefaultUsers = async () => {
     try {
-      // Check if admin user already exists
-      const existingAdmin = await storage.getUserByUsername("admin");
+      // Create admin from env if provided; otherwise create a weak default in dev only
+      const adminUsername = process.env.ADMIN_USERNAME || "admin";
+      const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "admin123");
+      const existingAdmin = await storage.getUserByUsername(adminUsername);
       if (!existingAdmin) {
-        // Create admin user
-        const hashedAdminPassword = await hashPassword("admin123");
-        await storage.createUser({
-          username: "admin",
-          password: hashedAdminPassword,
-          displayName: "Admin",
-          level: 5,
-          points: 1000,
-          progress: 100,
-          avatar: "admin_avatar",
-          outfits: [],
-          accessories: [],
-          completedMissions: [1, 2, 3, 4],
-          earnedBadges: [1, 2, 3, 4, 5],
-          unlockedMiniGames: [1, 2, 3, 4],
-          isAdmin: true
-        });
-        console.log("Created default admin user");
+        if (!adminPassword) {
+          console.warn("ADMIN_PASSWORD not set; skipping admin creation in production.");
+        } else {
+          const hashedAdminPassword = await hashPassword(adminPassword);
+          await storage.createUser({
+            username: adminUsername,
+            password: hashedAdminPassword,
+            displayName: "Admin",
+            level: 5,
+            points: 1000,
+            progress: 100,
+            avatar: "admin_avatar",
+            outfits: [],
+            accessories: [],
+            completedMissions: [1, 2, 3, 4],
+            earnedBadges: [1, 2, 3, 4, 5],
+            unlockedMiniGames: [1, 2, 3, 4],
+            isAdmin: true
+          });
+          console.log(`Created admin user '${adminUsername}'`);
+        }
       }
       
       // Check if regular user already exists
@@ -274,10 +293,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // ADMIN ROUTES
+  // ADMIN ROUTES (protected)
   
   // Get all users (admin only)
-  app.get("/api/admin/users", async (req, res) => {
+  app.get("/api/admin/users", requireAdmin, async (req, res) => {
     try {
       // In a real app, this would check if the requesting user is an admin
       // For this demo, we'll skip that check
@@ -297,7 +316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get user by ID (admin only)
-  app.get("/api/admin/users/:id", async (req, res) => {
+  app.get("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = await storage.getUser(id);
@@ -317,7 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create user (admin only)
-  app.post("/api/admin/users", async (req, res) => {
+  app.post("/api/admin/users", requireAdmin, async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
       
@@ -347,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update user (admin only)
-  app.put("/api/admin/users/:id", async (req, res) => {
+  app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = await storage.getUser(id);
@@ -383,7 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete user (admin only)
-  app.delete("/api/admin/users/:id", async (req, res) => {
+  app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = await storage.getUser(id);
@@ -404,7 +423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Reset user password (admin only)
-  app.post("/api/admin/users/:id/reset-password", async (req, res) => {
+  app.post("/api/admin/users/:id/reset-password", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = await storage.getUser(id);
@@ -620,6 +639,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete game error:", error);
       res.status(500).json({ message: "Failed to delete game" });
+    }
+  });
+
+  // LEADERBOARD ROUTES
+  // Submit a leaderboard entry
+  app.post("/api/leaderboard", async (req, res) => {
+    const schema = z.object({
+      gameKey: z.string().min(1), // e.g. "maze"
+      username: z.string().min(1),
+      userId: z.number().optional(),
+      timeMs: z.number().positive(),
+      objectivesCollected: z.number().int().min(0),
+    });
+
+    try {
+      const data = schema.parse(req.body);
+      const entry = await storage.submitLeaderboardEntry({
+        gameKey: data.gameKey,
+        username: data.username,
+        userId: data.userId,
+        timeMs: data.timeMs,
+        objectivesCollected: data.objectivesCollected,
+      });
+      res.status(201).json(entry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid leaderboard entry", errors: error.errors });
+      }
+      res.status(400).json({ message: "Invalid leaderboard entry" });
+    }
+  });
+
+  // Get leaderboard
+  app.get("/api/leaderboard/:gameKey", async (req, res) => {
+    try {
+      const gameKey = req.params.gameKey;
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const leaderboard = await storage.getLeaderboard(gameKey, limit);
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to load leaderboard" });
     }
   });
 

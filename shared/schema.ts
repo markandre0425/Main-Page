@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, json, PgArray } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, json, PgArray, bigint, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -68,6 +68,17 @@ export const hazards = pgTable("hazards", {
   imageUrl: text("image_url"),
 });
 
+export const leaderboards = pgTable("leaderboards", {
+  id: serial("id").primaryKey(),
+  gameKey: text("game_key").notNull(),
+  userId: integer("user_id"),
+  username: text("username").notNull(),
+  timeMs: integer("time_ms").notNull(),
+  objectivesCollected: integer("objectives_collected").notNull(),
+  score: integer("score").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users);
 
@@ -85,3 +96,4 @@ export type MiniGame = typeof miniGames.$inferSelect;
 export type Badge = typeof badges.$inferSelect;
 export type SafetyTip = typeof safetyTips.$inferSelect;
 export type Hazard = typeof hazards.$inferSelect;
+export type Leaderboard = typeof leaderboards.$inferSelect;

@@ -14,6 +14,7 @@ import GamesPage from "@/pages/GamesPage";
 import SafetyTipsPage from "@/pages/SafetyTipsPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ProfilePage from "@/pages/ProfilePage";
+import LeaderboardPage from "@/pages/LeaderboardPage";
 import { useEffect } from "react";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -40,6 +41,7 @@ function Router() {
       <ProtectedRoute path="/games" component={GamesPage} />
       <ProtectedRoute path="/safety-tips" component={SafetyTipsPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
+      <ProtectedRoute path="/leaderboard" component={LeaderboardPage} />
       <ProtectedRoute path="/admin" component={AdminDashboard} adminOnly={true} />
       
       <Route component={NotFound} />
