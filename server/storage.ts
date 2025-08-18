@@ -61,7 +61,7 @@ export class MemStorage implements IStorage {
     this.leaderboards = new Map();
     this.leaderboardIdCounter = 1;
     
-    // Create memory store for sessions
+    // Create memory store for sessions (fallback)
     const MemoryStore = createMemoryStore(session);
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // prune expired entries every 24h
@@ -236,44 +236,94 @@ export class MemStorage implements IStorage {
 export const storage = new MemStorage();
 
 // Optional: Postgres-backed leaderboard if DATABASE_URL is present (Render Postgres)
-try {
-  if (process.env.DATABASE_URL) {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    const db = drizzle(pool);
+(async () => {
+  try {
+    if (process.env.DATABASE_URL) {
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      const db = drizzle(pool);
 
-    // Extend storage with DB methods for leaderboard
-    const mem = storage as MemStorage;
-    mem.submitLeaderboardEntry = async (entry) => {
-      const createdAt = Date.now();
-      const score = entry.objectivesCollected * 1000 - Math.floor(entry.timeMs / 100);
-      const inserted = await db
-        .insert(lbTable)
-        .values({
-          gameKey: entry.gameKey,
-          userId: entry.userId ?? null,
-          username: entry.username,
-          timeMs: entry.timeMs,
-          objectivesCollected: entry.objectivesCollected,
-          score,
-          createdAt,
-        })
-        .returning();
-      return inserted[0] as any;
-    };
-    mem.getLeaderboard = async (gameKey: string, limit = 50) => {
-      const rows = await db
-        .select()
-        .from(lbTable)
-        .where(sql`${lbTable.gameKey} = ${gameKey}`)
-        .limit(limit);
-      // Sort same as memory (time asc, objectives desc, created asc)
-      return rows.sort((a, b) => {
-        if (a.timeMs !== b.timeMs) return a.timeMs - b.timeMs;
-        if (a.objectivesCollected !== b.objectivesCollected) return b.objectivesCollected - a.objectivesCollected;
-        return a.createdAt - b.createdAt;
+      // Create sessions table if it doesn't exist
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS sessions (
+          sid VARCHAR(255) PRIMARY KEY,
+          sess JSON NOT NULL,
+          expire TIMESTAMP(6) NOT NULL
+        )
+      `);
+
+      // Create a PostgreSQL session store
+      const PostgresStore = require('connect-pg-simple')(session);
+      const postgresSessionStore = new PostgresStore({
+        conObject: {
+          connectionString: process.env.DATABASE_URL,
+          ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        },
+        tableName: 'sessions'
       });
-    };
+
+      // Replace the memory session store with PostgreSQL store
+      storage.sessionStore = postgresSessionStore;
+
+      // Extend storage with DB methods for leaderboard
+      const mem = storage as MemStorage;
+      mem.submitLeaderboardEntry = async (entry) => {
+        const createdAt = Date.now();
+        const score = entry.objectivesCollected * 1000 - Math.floor(entry.timeMs / 100);
+        const inserted = await db
+          .insert(lbTable)
+          .values({
+            gameKey: entry.gameKey,
+            userId: entry.userId ?? null,
+            username: entry.username,
+            timeMs: entry.timeMs,
+            objectivesCollected: entry.objectivesCollected,
+            score,
+            createdAt,
+          })
+          .returning();
+        
+        // Convert to LeaderboardEntry format
+        const dbEntry = inserted[0];
+        return {
+          id: dbEntry.id,
+          gameKey: dbEntry.gameKey,
+          userId: dbEntry.userId ?? undefined,
+          username: dbEntry.username,
+          timeMs: dbEntry.timeMs,
+          objectivesCollected: dbEntry.objectivesCollected,
+          score: dbEntry.score,
+          createdAt: dbEntry.createdAt,
+        } as LeaderboardEntry;
+      };
+      
+      mem.getLeaderboard = async (gameKey: string, limit = 50) => {
+        const rows = await db
+          .select()
+          .from(lbTable)
+          .where(sql`${lbTable.gameKey} = ${gameKey}`)
+          .limit(limit);
+        
+        // Convert to LeaderboardEntry format and sort
+        const entries = rows.map(row => ({
+          id: row.id,
+          gameKey: row.gameKey,
+          userId: row.userId ?? undefined,
+          username: row.username,
+          timeMs: row.timeMs,
+          objectivesCollected: row.objectivesCollected,
+          score: row.score,
+          createdAt: row.createdAt,
+        } as LeaderboardEntry));
+        
+        // Sort same as memory (time asc, objectives desc, created asc)
+        return entries.sort((a, b) => {
+          if (a.timeMs !== b.timeMs) return a.timeMs - b.timeMs;
+          if (a.objectivesCollected !== b.objectivesCollected) return b.objectivesCollected - a.objectivesCollected;
+          return a.createdAt - b.createdAt;
+        });
+      };
+    }
+  } catch (e) {
+    console.warn("Postgres leaderboard unavailable, using in-memory fallback:", e);
   }
-} catch (e) {
-  console.warn("Postgres leaderboard unavailable, using in-memory fallback:", e);
-}
+})();

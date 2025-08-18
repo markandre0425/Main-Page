@@ -172,7 +172,14 @@ export default function GamesPage() {
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h2 className="font-bangers text-2xl text-gray-800 mb-4">Game Progress</h2>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+            <h2 className="font-bangers text-2xl text-gray-800">Game Progress</h2>
+            <Link href="/leaderboard">
+              <button className="px-4 py-2 bg-[#FF5722] hover:bg-[#E91E63] text-white rounded-lg font-fredoka transition-colors">
+                View Leaderboards
+              </button>
+            </Link>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-fredoka text-lg text-gray-800 mb-3">Most Played</h3>

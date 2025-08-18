@@ -17,11 +17,10 @@ export default function GameNav() {
   
   const navItems: NavItem[] = [
     { name: "Home", path: "/", icon: "fa-home" },
-    { name: "Missions", path: "/mission/list", icon: "fa-tasks" },
     { name: "Games", path: "/games", icon: "fa-gamepad" },
-    { name: "My Hero", path: "/avatar", icon: "fa-user-astronaut" },
+    { name: "Leaderboard", path: "/leaderboard", icon: "fa-chart-bar" },
+    { name: "Missions", path: "/mission/list", icon: "fa-tasks" },
     { name: "Profile", path: "/profile", icon: "fa-id-card" },
-    { name: "Rewards", path: "/rewards", icon: "fa-trophy" },
     { name: "Admin", path: "/admin", icon: "fa-lock", adminOnly: true },
   ];
 

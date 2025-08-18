@@ -90,6 +90,20 @@ export default function HeroSection() {
                 Play Now
               </motion.button>
             </Link>
+            <Link href="/leaderboard">
+              <motion.button 
+                className="game-button bg-[#FF5722] hover:bg-[#E91E63] text-white px-6 py-3 rounded-xl font-fredoka text-lg shadow-md transform transition"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {/* Using SVG instead of font-awesome for better load time */}
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2">
+                  <path d="M3 3v18h18"></path>
+                  <path d="M18.7 8l-5.1 5.1-2.8-2.7L7 14.3"></path>
+                </svg>
+                Leaderboard
+              </motion.button>
+            </Link>
             <button 
               onClick={() => setShowTutorial(!showTutorial)}
               className="game-button bg-white/30 hover:bg-white/40 text-white px-6 py-3 rounded-xl font-fredoka text-lg shadow-md"

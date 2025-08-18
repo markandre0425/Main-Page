@@ -23,9 +23,31 @@ app.use(express.urlencoded({ extended: false }));
 
 // Basic CORS for cross-origin calls from your game services
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
+  // Allow credentials (cookies) for authentication
+  res.header("Access-Control-Allow-Credentials", "true");
+  
+  // For production, restrict origin to your domain
+  if (process.env.NODE_ENV === 'production') {
+    const allowedOrigins = [
+      'https://main-page-v5n4.onrender.com',
+      'https://apula-maze.onrender.com',
+      'https://apula-escape-room.onrender.com',
+      'https://apula-matching-cards.onrender.com',
+      'https://apula-crossword.onrender.com'
+    ];
+    
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+  } else {
+    // In development, allow all origins
+    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  }
+  
   res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }

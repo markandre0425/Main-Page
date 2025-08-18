@@ -683,6 +683,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get personal stats for a specific game
+  app.get("/api/leaderboard/:gameKey/personal", requireAuth, async (req, res) => {
+    try {
+      const gameKey = req.params.gameKey;
+      const user = (req as any).user;
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      // Get user's best performance for this game
+      const leaderboard = await storage.getLeaderboard(gameKey, 1000); // Get all entries to find user's rank
+      const userEntries = leaderboard.filter(entry => entry.username === user.username);
+      
+      if (userEntries.length === 0) {
+        return res.json({
+          bestTime: 0,
+          bestScore: 0,
+          objectivesCollected: 0,
+          rank: 0,
+          lastPlayed: 'Never',
+          gamesPlayed: 0
+        });
+      }
+
+      // Find best performance
+      const bestEntry = userEntries.reduce((best, current) => {
+        if (current.timeMs < best.timeMs) return current;
+        if (current.timeMs === best.timeMs && current.objectivesCollected > best.objectivesCollected) return current;
+        return best;
+      });
+
+      // Calculate rank
+      const userRank = leaderboard.findIndex(entry => entry.username === user.username) + 1;
+
+      res.json({
+        bestTime: bestEntry.timeMs,
+        bestScore: bestEntry.score,
+        objectivesCollected: bestEntry.objectivesCollected,
+        rank: userRank,
+        lastPlayed: new Date(bestEntry.createdAt).toLocaleDateString(),
+        gamesPlayed: userEntries.length
+      });
+    } catch (error) {
+      console.error("Personal stats error:", error);
+      res.status(500).json({ message: "Failed to load personal stats" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
