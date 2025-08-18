@@ -301,7 +301,10 @@ export const storage = new MemStorage();
 (async () => {
   try {
     if (process.env.DATABASE_URL) {
-      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      const pool = new Pool({ 
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      });
       const db = drizzle(pool);
 
       // Create sessions table if it doesn't exist
