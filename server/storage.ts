@@ -1,7 +1,8 @@
 import { users, type User, type InsertUser, type MiniGame, leaderboards as lbTable } from "@shared/schema";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
-import { Pool } from "pg";
+import pgPkg from "pg";
+const { Pool } = pgPkg as unknown as { Pool: any };
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { hashPassword } from "./auth";
