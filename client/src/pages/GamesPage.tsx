@@ -12,8 +12,7 @@ import { getQueryFn } from "@/lib/queryClient";
 
 // Import game components
 import FireExtinguisherSimulator from "@/components/games/FireExtinguisherSimulator";
-import HazardIdentificationGame from "@/components/games/HazardIdentificationGame";
-import EscapePlanDesigner from "@/components/games/EscapePlanDesigner";
+// Removed: HazardIdentificationGame, EscapePlanDesigner
 import FireSafetyQuiz from "@/components/games/FireSafetyQuiz";
 
 interface BuiltInGame {
@@ -43,22 +42,7 @@ export default function GamesPage() {
       icon: <HelpCircle className="w-8 h-8 text-white/80" />,
       path: "/games/fire-safety-quiz"
     },
-    {
-      id: 3,
-      title: "Escape Plan Designer",
-      description: "Create and practice a personalized fire escape plan for your home or building.",
-      color: "bg-gradient-to-br from-blue-500 to-indigo-600",
-      icon: <Route className="w-8 h-8 text-white/80" />,
-      path: "/games/escape-plan-designer"
-    },
-    {
-      id: 4,
-      title: "Hazard Identification Game",
-      description: "Identify fire hazards in different rooms and learn how to prevent dangerous situations.",
-      color: "bg-gradient-to-br from-amber-500 to-yellow-600",
-      icon: <ShieldAlert className="w-8 h-8 text-white/80" />,
-      path: "/games/hazard-identification"
-    },
+    // Removed Escape Plan Designer and Hazard Identification entries
     {
       id: 5,
       title: "Safety Tips Library",

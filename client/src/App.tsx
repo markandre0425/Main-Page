@@ -33,8 +33,6 @@ function Router() {
       
       {/* Game Routes */}
       <ProtectedRoute path="/games/fire-extinguisher-simulator" component={MiniGamePage} />
-      <ProtectedRoute path="/games/hazard-identification" component={MiniGamePage} />
-      <ProtectedRoute path="/games/escape-plan-designer" component={MiniGamePage} />
       <ProtectedRoute path="/games/fire-safety-quiz" component={MiniGamePage} />
       <ProtectedRoute path="/avatar" component={AvatarPage} />
       <ProtectedRoute path="/rewards" component={RewardsPage} />
