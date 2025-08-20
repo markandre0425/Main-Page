@@ -85,7 +85,7 @@ export class MemStorage implements IStorage {
         type: "3d-maze",
         bestScore: null,
         imageUrl: "https://placehold.co/400x300/FF5722/FFFFFF/svg?text=Fire+Safety+Maze",
-        externalUrl: "https://apula-maze.onrender.com",
+        externalUrl: "https://apula-maze-pqu6.onrender.com/",
         isExternal: true
       });
 
@@ -300,10 +300,14 @@ export const storage = new MemStorage();
 // Optional: Postgres-backed leaderboard if DATABASE_URL is present (Render Postgres)
 (async () => {
   try {
-    if (process.env.DATABASE_URL) {
+    // Check if DATABASE_URL is actually set and not empty
+    if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '') {
+      console.log('🔄 Attempting PostgreSQL connection...');
       const pool = new Pool({ 
         connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        ssl: process.env.NODE_ENV === 'production' && process.env.DATABASE_URL?.includes('render.com') 
+          ? { rejectUnauthorized: false } 
+          : false
       });
       const db = drizzle(pool);
 
@@ -408,6 +412,8 @@ export const storage = new MemStorage();
           return a.createdAt - b.createdAt;
         });
       };
+    } else {
+      console.log('📝 No DATABASE_URL found, using in-memory storage only');
     }
   } catch (e) {
     console.warn("Postgres leaderboard unavailable, using in-memory fallback:", e);
