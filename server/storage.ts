@@ -95,7 +95,7 @@ export class MemStorage implements IStorage {
         type: "matching-cards",
         bestScore: null,
         imageUrl: "https://placehold.co/400x300/2196F3/FFFFFF/svg?text=Matching+Cards",
-        externalUrl: "https://apula-matching-cards.onrender.com",
+        externalUrl: "https://apula-matching-card.onrender.com",
         isExternal: true
       });
 
