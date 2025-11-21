@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { FaGamepad, FaTrophy } from "react-icons/fa";
 import { Progress } from "@/components/ui/progress";
+import { SpeakableText } from "@/components/SpeakableText";
 
 interface WelcomeHeroProps {
   progress: number;
@@ -21,15 +22,21 @@ export default function WelcomeHero({ progress }: WelcomeHeroProps) {
         <div className="flex flex-col md:flex-row items-center">
           <div className="md:w-3/5 mb-6 md:mb-0 md:pr-8">
             <div className="flex items-center mb-2">
-              <h2 className="text-3xl font-bold text-dark-navy">Welcome back, <span className="text-fire-red">{user.name}</span>!</h2>
+              <SpeakableText text={`Welcome back, ${user.name}!`}>
+                <h2 className="text-3xl font-bold text-dark-navy">Welcome back, <span className="text-fire-red">{user.name}</span>!</h2>
+              </SpeakableText>
               <div className="w-12 h-12 rounded-full ml-4 border-2 border-fire-orange flex items-center justify-center bg-gray-200 text-fire-red">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             </div>
-            <p className="text-gray-600 mb-4">Continue your fire safety adventure and earn new achievements!</p>
+            <SpeakableText text="Continue your fire safety adventure and earn new achievements!">
+              <p className="text-gray-600 mb-4">Continue your fire safety adventure and earn new achievements!</p>
+            </SpeakableText>
             <div className="bg-gray-100 rounded-lg p-4 mb-6">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-dark-navy">Your Progress</h3>
+                <SpeakableText text={`Your Progress: ${progress} percent`}>
+                  <h3 className="font-bold text-dark-navy">Your Progress</h3>
+                </SpeakableText>
                 <span className="text-fire-orange font-bold">{progress}%</span>
               </div>
               <Progress value={progress} className="h-4 bg-gray-300" />

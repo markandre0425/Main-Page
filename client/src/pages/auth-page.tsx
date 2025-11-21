@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect, useLocation } from "wouter";
-import { Flame, Lock, User, UserPlus, UserCheck, Loader2 } from "lucide-react";
+import { Flame, Lock, User, UserPlus, UserCheck, Loader2, Baby, Shield } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -29,7 +29,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState<string>("login");
+  const [activeTab, setActiveTab] = useState<string>("guest");
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -49,6 +49,78 @@ export default function AuthPage() {
       displayName: ""
     }
   });
+
+  // Handle guest mode
+  const handleGuestMode = () => {
+    // Create a temporary guest user
+    const guestUser = {
+      id: Math.random().toString(36).substr(2, 9),
+      username: `Guest_${Math.random().toString(36).substr(2, 5)}`,
+      displayName: "Friend",
+      isAdmin: false,
+      level: 1,
+      points: 0,
+      progress: 0,
+      avatar: "default",
+      outfits: [],
+      accessories: [],
+      earnedBadges: [],
+      unlockedMiniGames: [],
+      completedMissions: []
+    };
+    
+    // Store guest user in session storage
+    sessionStorage.setItem('guestUser', JSON.stringify(guestUser));
+    navigate("/");
+  };
+
+  // Handle direct game access
+  const handleDirectGame = (gamePath: string) => {
+    // Create a temporary guest user
+    const guestUser = {
+      id: Math.random().toString(36).substr(2, 9),
+      username: `Guest_${Math.random().toString(36).substr(2, 5)}`,
+      displayName: "Friend",
+      isAdmin: false,
+      level: 1,
+      points: 0,
+      progress: 0,
+      avatar: "default",
+      outfits: [],
+      accessories: [],
+      earnedBadges: [],
+      unlockedMiniGames: [],
+      completedMissions: []
+    };
+    
+    // Store guest user in session storage
+    sessionStorage.setItem('guestUser', JSON.stringify(guestUser));
+    navigate(gamePath);
+  };
+
+  // Handle quick start (go to landing page)
+  const handleQuickStart = () => {
+    // Create a temporary guest user
+    const guestUser = {
+      id: Math.random().toString(36).substr(2, 9),
+      username: `Guest_${Math.random().toString(36).substr(2, 5)}`,
+      displayName: "Friend",
+      isAdmin: false,
+      level: 1,
+      points: 0,
+      progress: 0,
+      avatar: "default",
+      outfits: [],
+      accessories: [],
+      earnedBadges: [],
+      unlockedMiniGames: [],
+      completedMissions: []
+    };
+    
+    // Store guest user in session storage
+    sessionStorage.setItem('guestUser', JSON.stringify(guestUser));
+    navigate("/");
+  };
 
   // Handle login form submission
   const onLoginSubmit = (data: LoginFormValues) => {
@@ -97,26 +169,115 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-100 p-4">
       <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
         {/* Auth form */}
         <div>
-          <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs defaultValue="guest" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="mb-8 text-center">
-              <h1 className="font-bangers text-5xl text-orange-600 mb-2">APULA</h1>
-              <p className="text-slate-700">Learn fire safety through fun adventures!</p>
+              <h1 className="font-bangers text-6xl text-pink-600 mb-2">🚒 APULA 🚒</h1>
+              <p className="text-slate-700 text-xl">Learn fire safety through fun adventures!</p>
             </div>
             
-            <TabsList className="grid grid-cols-2 mb-6">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
+            <TabsList className="grid grid-cols-3 mb-6">
+              <TabsTrigger value="guest" className="text-lg py-3">🎮 Play Now</TabsTrigger>
+              <TabsTrigger value="login" className="text-lg py-3">👤 Login</TabsTrigger>
+              <TabsTrigger value="register" className="text-lg py-3">➕ Sign Up</TabsTrigger>
             </TabsList>
             
+            <TabsContent value="guest">
+              <Card className="border-4 border-pink-200">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-3xl font-bangers text-pink-600">🌟 Start Playing! 🌟</CardTitle>
+                  <CardDescription className="text-lg">
+                    Choose a game to play right away!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Quick Game Options */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Fire Safety Quiz */}
+                    <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                      <div className="text-center">
+                        <div className="text-4xl mb-2">🧠</div>
+                        <h3 className="font-fredoka text-xl text-blue-600 mb-2">Fire Safety Quiz</h3>
+                        <p className="text-sm text-gray-600 mb-3">Test your fire safety knowledge!</p>
+                        <Button 
+                          onClick={() => handleDirectGame("/games/fire-safety-quiz")}
+                          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-fredoka"
+                        >
+                          🎮 Play Quiz
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Safety Tips */}
+                    <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                      <div className="text-center">
+                        <div className="text-4xl mb-2">📚</div>
+                        <h3 className="font-fredoka text-xl text-green-600 mb-2">Safety Tips</h3>
+                        <p className="text-sm text-gray-600 mb-3">Learn important fire safety tips!</p>
+                        <Button 
+                          onClick={() => handleDirectGame("/safety-tips")}
+                          className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-fredoka"
+                        >
+                          📖 Learn Tips
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* All Games */}
+                    <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
+                      <div className="text-center">
+                        <div className="text-4xl mb-2">🎮</div>
+                        <h3 className="font-fredoka text-xl text-purple-600 mb-2">All Games</h3>
+                        <p className="text-sm text-gray-600 mb-3">Explore all available games!</p>
+                        <Button 
+                          onClick={() => handleDirectGame("/games")}
+                          className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg font-fredoka"
+                        >
+                          🎯 Explore
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Or Explore All Games */}
+                  <div className="text-center">
+                    <div className="bg-yellow-100 p-4 rounded-lg border-2 border-yellow-300 mb-4">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Want to explore everything?</strong> Click below to start your adventure!
+                      </p>
+                    </div>
+                    
+                    <Button 
+                      onClick={handleQuickStart}
+                      className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white text-xl py-6 rounded-xl font-fredoka shadow-lg"
+                    >
+                      <Baby className="mr-3 h-6 w-6" />
+                      🏠 Start Adventure
+                    </Button>
+                  </div>
+                </CardContent>
+                <CardFooter className="justify-center">
+                  <p className="text-sm text-center text-gray-600">
+                    Want to save your progress?{" "}
+                    <button 
+                      onClick={() => setActiveTab("register")}
+                      className="text-pink-600 hover:underline font-medium"
+                    >
+                      Create an account
+                    </button>
+                  </p>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+            
             <TabsContent value="login">
-              <Card>
+              <Card className="border-4 border-blue-200">
                 <CardHeader>
-                  <CardTitle>Welcome Back!</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-2xl font-bangers text-blue-600">Welcome Back! 👋</CardTitle>
+                  <CardDescription className="text-lg">
                     Login to continue your fire safety journey
                   </CardDescription>
                 </CardHeader>
@@ -128,13 +289,13 @@ export default function AuthPage() {
                         name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Username</FormLabel>
+                            <FormLabel className="text-lg font-medium">Username</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <User className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                 <Input 
                                   placeholder="Enter your username" 
-                                  className="pl-10" 
+                                  className="pl-12 h-12 text-lg" 
                                   {...field} 
                                 />
                               </div>
@@ -149,14 +310,14 @@ export default function AuthPage() {
                         name="password"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Password</FormLabel>
+                            <FormLabel className="text-lg font-medium">Password</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                 <Input 
                                   type="password" 
                                   placeholder="Enter your password" 
-                                  className="pl-10" 
+                                  className="pl-12 h-12 text-lg" 
                                   {...field} 
                                 />
                               </div>
@@ -168,19 +329,19 @@ export default function AuthPage() {
                       
                       <Button 
                         type="submit" 
-                        className="w-full" 
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white text-xl py-6 rounded-xl font-fredoka" 
                         disabled={loginMutation.isPending}
                       >
                         {loginMutation.isPending ? (
                           <>
                             <span className="animate-spin mr-2">
-                              <Loader2 className="h-4 w-4" />
+                              <Loader2 className="h-5 w-5" />
                             </span>
                             Logging in...
                           </>
                         ) : (
                           <>
-                            <UserCheck className="mr-2 h-4 w-4" />
+                            <UserCheck className="mr-2 h-5 w-5" />
                             Log In
                           </>
                         )}
@@ -193,9 +354,9 @@ export default function AuthPage() {
                     Don't have an account?{" "}
                     <button 
                       onClick={() => setActiveTab("register")}
-                      className="text-blue-600 hover:underline"
+                      className="text-blue-600 hover:underline font-medium"
                     >
-                      Register now
+                      Sign up now
                     </button>
                   </p>
                 </CardFooter>
@@ -203,10 +364,10 @@ export default function AuthPage() {
             </TabsContent>
             
             <TabsContent value="register">
-              <Card>
+              <Card className="border-4 border-green-200">
                 <CardHeader>
-                  <CardTitle>Create an Account</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-2xl font-bangers text-green-600">Create an Account 🎉</CardTitle>
+                  <CardDescription className="text-lg">
                     Join the adventure and learn about fire safety
                   </CardDescription>
                 </CardHeader>
@@ -218,13 +379,13 @@ export default function AuthPage() {
                         name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Username</FormLabel>
+                            <FormLabel className="text-lg font-medium">Username</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <User className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                 <Input 
                                   placeholder="Choose a username" 
-                                  className="pl-10" 
+                                  className="pl-12 h-12 text-lg" 
                                   {...field} 
                                 />
                               </div>
@@ -239,13 +400,13 @@ export default function AuthPage() {
                         name="displayName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Display Name</FormLabel>
+                            <FormLabel className="text-lg font-medium">Your Name</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <UserCheck className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <UserCheck className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                 <Input 
-                                  placeholder="Enter your display name" 
-                                  className="pl-10" 
+                                  placeholder="Enter your name" 
+                                  className="pl-12 h-12 text-lg" 
                                   {...field} 
                                 />
                               </div>
@@ -260,14 +421,14 @@ export default function AuthPage() {
                         name="password"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Password</FormLabel>
+                            <FormLabel className="text-lg font-medium">Password</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                 <Input 
                                   type="password" 
                                   placeholder="Create a password" 
-                                  className="pl-10" 
+                                  className="pl-12 h-12 text-lg" 
                                   {...field} 
                                 />
                               </div>
@@ -279,19 +440,19 @@ export default function AuthPage() {
                       
                       <Button 
                         type="submit" 
-                        className="w-full" 
+                        className="w-full bg-green-500 hover:bg-green-600 text-white text-xl py-6 rounded-xl font-fredoka" 
                         disabled={registerMutation.isPending}
                       >
                         {registerMutation.isPending ? (
                           <>
                             <span className="animate-spin mr-2">
-                              <Loader2 className="h-4 w-4" />
+                              <Loader2 className="h-5 w-5" />
                             </span>
-                            Registering...
+                            Creating account...
                           </>
                         ) : (
                           <>
-                            <UserPlus className="mr-2 h-4 w-4" />
+                            <UserPlus className="mr-2 h-5 w-5" />
                             Create Account
                           </>
                         )}
@@ -304,7 +465,7 @@ export default function AuthPage() {
                     Already have an account?{" "}
                     <button 
                       onClick={() => setActiveTab("login")}
-                      className="text-blue-600 hover:underline"
+                      className="text-green-600 hover:underline font-medium"
                     >
                       Log in
                     </button>
@@ -316,16 +477,20 @@ export default function AuthPage() {
         </div>
         
         {/* Hero section */}
-        <div className="hidden md:flex flex-col items-center justify-center p-6 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl text-white shadow-xl">
+        <div className="hidden md:flex flex-col items-center justify-center p-6 bg-gradient-to-r from-pink-500 to-purple-500 rounded-2xl text-white shadow-xl">
           <div className="text-center">
             <Flame className="mx-auto h-20 w-20 mb-6" />
-            <h2 className="font-bangers text-4xl mb-4">Learn Fire Safety The Fun Way!</h2>
+            <h2 className="font-bangers text-4xl mb-4">Learn Fire Safety The Fun Way! 🔥</h2>
             <div className="space-y-4 text-xl">
-              <p>• Complete exciting missions</p>
-              <p>• Play interactive mini-games</p>
-              <p>• Earn badges and rewards</p>
-              <p>• Track your progress</p>
-              <p>• Become an APULA Hero!</p>
+              <p>🎮 Play fun games</p>
+              <p>⭐ Earn stars and badges</p>
+              <p>🚒 Learn about firefighters</p>
+              <p>🏠 Practice home safety</p>
+              <p>🌟 Become a Safety Hero!</p>
+            </div>
+            <div className="mt-8 p-4 bg-white/20 rounded-lg">
+              <p className="text-lg font-medium">Perfect for ages 4-8!</p>
+              <p className="text-sm opacity-90">Kindergarten to Grade 3</p>
             </div>
           </div>
         </div>

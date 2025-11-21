@@ -1,72 +1,37 @@
 import { useAuth } from "@/hooks/use-auth";
-import { ProgressMap } from "@/components/progress/ProgressMap";
+import { useUserProgress } from "@/hooks/useUserProgress";
+import { FireSafetyStars } from "@/components/progress/FireSafetyStars";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
-import { Award, BookOpen, Medal, Star, Flame, Clock, Target, Zap } from "lucide-react";
+import { Award, BookOpen, Medal, Star, Flame, Clock, Target, Zap, TrendingUp } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
-// Mock achievements data (would come from the backend in a real app)
-const achievementsList = [
-  {
-    id: 1,
-    title: "Fire Starter",
-    description: "Completed your first fire safety mission",
-    icon: <Flame className="h-8 w-8 text-orange-500" />,
-    earned: true,
-    date: "2023-09-15"
-  },
-  {
-    id: 2,
-    title: "Quick Learner",
-    description: "Completed 3 missions in a single day",
-    icon: <Zap className="h-8 w-8 text-yellow-500" />,
-    earned: true,
-    date: "2023-09-20"
-  },
-  {
-    id: 3,
-    title: "Knowledge Guardian",
-    description: "Scored 100% on a fire safety quiz",
-    icon: <BookOpen className="h-8 w-8 text-blue-500" />,
-    earned: false,
-    date: null
-  },
-  {
-    id: 4,
-    title: "Perfect Planner",
-    description: "Completed fire safety training",
-    icon: <Target className="h-8 w-8 text-green-500" />,
-    earned: false,
-    date: null
-  },
-  {
-    id: 5,
-    title: "Safety Champion",
-    description: "Completed all basic fire safety training",
-    icon: <Medal className="h-8 w-8 text-purple-500" />,
-    earned: false,
-    date: null
-  }
-];
-
-// Mock statistics data
-const statsData = [
-  { label: "Missions Completed", value: 3, icon: <Target className="h-5 w-5 text-blue-500" /> },
-  { label: "Quizzes Taken", value: 2, icon: <BookOpen className="h-5 w-5 text-purple-500" /> },
-  { label: "Games Played", value: 5, icon: <Flame className="h-5 w-5 text-red-500" /> },
-  { label: "Achievements Earned", value: 2, icon: <Award className="h-5 w-5 text-yellow-500" /> },
-  { label: "Total Time Spent", value: "3h 45m", icon: <Clock className="h-5 w-5 text-green-500" /> },
-  { label: "Highest Score", value: "85%", icon: <Star className="h-5 w-5 text-orange-500" /> }
-];
-
 export default function ProfilePage() {
   const { user } = useAuth();
-  const earnedAchievements = achievementsList.filter(a => a.earned);
-  const achievementProgress = Math.round((earnedAchievements.length / achievementsList.length) * 100);
+  const { 
+    progress, 
+    achievements, 
+    getFormattedTime, 
+    getRecentGames, 
+    getEarnedAchievements 
+  } = useUserProgress();
+  
+  const earnedAchievements = getEarnedAchievements();
+  const achievementProgress = achievements.length > 0 ? Math.round((earnedAchievements.length / achievements.length) * 100) : 0;
+  
+  // Real-time statistics data
+  const statsData = [
+    { label: "Missions Completed", value: progress.missionsCompleted, icon: <Target className="h-5 w-5 text-blue-500" /> },
+    { label: "Quizzes Taken", value: progress.quizzesTaken, icon: <BookOpen className="h-5 w-5 text-purple-500" /> },
+    { label: "Games Played", value: progress.gamesPlayed, icon: <Flame className="h-5 w-5 text-red-500" /> },
+    { label: "Achievements Earned", value: progress.achievementsEarned, icon: <Award className="h-5 w-5 text-yellow-500" /> },
+    { label: "Total Time Spent", value: getFormattedTime(progress.totalTimeSpent), icon: <Clock className="h-5 w-5 text-green-500" /> },
+    { label: "Highest Score", value: `${progress.highestScore}%`, icon: <Star className="h-5 w-5 text-orange-500" /> }
+  ];
   
   if (!user) {
     return (
@@ -119,15 +84,15 @@ export default function ProfilePage() {
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>Level Progress</span>
-                    <span>{user.progress || 65}%</span>
+                    <span>{progress.levelProgress}%</span>
                   </div>
-                  <Progress value={user.progress || 65} className="h-2" />
+                  <Progress value={progress.levelProgress} className="h-2" />
                 </div>
                 
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>Achievements</span>
-                    <span>{earnedAchievements.length}/{achievementsList.length}</span>
+                    <span>{earnedAchievements.length}/{achievements.length}</span>
                   </div>
                   <Progress value={achievementProgress} className="h-2" />
                 </div>
@@ -152,23 +117,23 @@ export default function ProfilePage() {
           {/* Progress Tab Card */}
           <Card className="md:w-2/3">
             <CardHeader className="pb-2">
-              <CardTitle>Your Progress</CardTitle>
-              <CardDescription>Track your learning journey</CardDescription>
+              <CardTitle>🌟 Your Fire Safety Progress</CardTitle>
+              <CardDescription>See all the stars you've earned!</CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="journey">
+              <Tabs defaultValue="stars">
                 <TabsList className="grid grid-cols-2 mb-4">
-                  <TabsTrigger value="journey">Learning Journey</TabsTrigger>
-                  <TabsTrigger value="achievements">Achievements</TabsTrigger>
+                  <TabsTrigger value="stars">My Fire Safety Stars</TabsTrigger>
+                  <TabsTrigger value="achievements">All Achievements</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="journey" className="space-y-4">
-                  <ProgressMap />
+                <TabsContent value="stars" className="space-y-4">
+                  <FireSafetyStars />
                 </TabsContent>
                 
                 <TabsContent value="achievements" className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {achievementsList.map((achievement) => (
+                    {achievements.map((achievement) => (
                       <motion.div
                         key={achievement.id}
                         className={`border rounded-lg p-4 relative ${achievement.earned ? 'bg-white' : 'bg-gray-50'}`}
@@ -176,13 +141,30 @@ export default function ProfilePage() {
                       >
                         <div className="flex items-start space-x-3">
                           <div className={`p-2 rounded-lg ${achievement.earned ? 'bg-blue-50' : 'bg-gray-100'}`}>
-                            {achievement.icon}
+                            <span className="text-2xl">{achievement.icon}</span>
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <h3 className="font-semibold">{achievement.title}</h3>
                             <p className="text-sm text-gray-500">{achievement.description}</p>
+                            
+                            {/* Progress bar for achievements with progress tracking */}
+                            {achievement.progress !== undefined && achievement.maxProgress && (
+                              <div className="mt-2">
+                                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                  <span>Progress</span>
+                                  <span>{achievement.progress}/{achievement.maxProgress}</span>
+                                </div>
+                                <Progress 
+                                  value={(achievement.progress / achievement.maxProgress) * 100} 
+                                  className="h-1" 
+                                />
+                              </div>
+                            )}
+                            
                             {achievement.earned ? (
-                              <p className="text-xs text-green-600 mt-1">Earned on {achievement.date}</p>
+                              <p className="text-xs text-green-600 mt-1">
+                                Earned on {new Date(achievement.earnedAt!).toLocaleDateString()}
+                              </p>
                             ) : (
                               <p className="text-xs text-gray-500 mt-1">Not yet earned</p>
                             )}

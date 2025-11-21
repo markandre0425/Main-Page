@@ -23,10 +23,10 @@ export default function AgeSelector() {
   };
   
   const ageGroups = [
-    { id: "kids", label: "Kids", ageRange: "Ages 5-8", icon: <FaChild className="text-4xl mb-2" />, bgColor: "bg-blue-100 hover:bg-blue-200", textColor: "text-water-blue", borderColor: "border-water-blue" },
-    { id: "preteens", label: "Pre-teens", ageRange: "Ages 9-12", icon: <FaChild className="text-4xl mb-2" />, bgColor: "bg-green-100 hover:bg-green-200", textColor: "text-green-600", borderColor: "border-green-600" },
-    { id: "teens", label: "Teens", ageRange: "Ages 13-17", icon: <FaUser className="text-4xl mb-2" />, bgColor: "bg-orange-100 hover:bg-orange-200", textColor: "text-fire-orange", borderColor: "border-fire-orange" },
-    { id: "adults", label: "Adults", ageRange: "Ages 18+", icon: <FaUserTie className="text-4xl mb-2" />, bgColor: "bg-red-100 hover:bg-red-200", textColor: "text-fire-red", borderColor: "border-fire-red" },
+    { id: "kindergarten", label: "Kindergarten", ageRange: "Ages 4-5", icon: <FaChild className="text-4xl mb-2" />, bgColor: "bg-pink-100 hover:bg-pink-200", textColor: "text-pink-600", borderColor: "border-pink-600" },
+    { id: "grade1", label: "Grade 1", ageRange: "Ages 6-7", icon: <FaChild className="text-4xl mb-2" />, bgColor: "bg-blue-100 hover:bg-blue-200", textColor: "text-water-blue", borderColor: "border-water-blue" },
+    { id: "grade2", label: "Grade 2", ageRange: "Ages 7-8", icon: <FaChild className="text-4xl mb-2" />, bgColor: "bg-green-100 hover:bg-green-200", textColor: "text-green-600", borderColor: "border-green-600" },
+    { id: "grade3", label: "Grade 3", ageRange: "Ages 8-9", icon: <FaChild className="text-4xl mb-2" />, bgColor: "bg-orange-100 hover:bg-orange-200", textColor: "text-fire-orange", borderColor: "border-fire-orange" },
   ];
 
   return (

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import GameNav from "@/components/layout/GameNav";
+// import GameNav from "@/components/layout/GameNav"; // Removed - now integrated into Header
 import { useUser } from "@/context/UserContext";
 import { motion } from "framer-motion";
 
@@ -86,7 +86,6 @@ export default function AvatarPage() {
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-6">
-        <GameNav />
         
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h1 className="font-bangers text-3xl text-gray-800 mb-6">Customize Your Hero</h1>

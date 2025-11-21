@@ -6,25 +6,25 @@ export default function CommunityHighlights() {
       id: 1,
       type: "achievement",
       user: "Sarah M.",
-      action: "completed the Fire Safety Maze",
+      action: "completed the Fire Safety Quiz",
       time: "2 hours ago",
       icon: "🎯",
       color: "from-green-500 to-emerald-600"
     },
     {
       id: 2,
-      type: "leaderboard",
+      type: "achievement",
       user: "Mike R.",
-      action: "set a new record in 3D Fire Main",
+      action: "played Matching Card Game",
       time: "5 hours ago",
       icon: "🏆",
       color: "from-yellow-400 to-orange-500"
     },
     {
       id: 3,
-      type: "mission",
+      type: "achievement",
       user: "Emma L.",
-      action: "started learning about kitchen safety",
+      action: "completed Fire Safety Quiz",
       time: "1 day ago",
       icon: "📚",
       color: "from-blue-500 to-indigo-600"

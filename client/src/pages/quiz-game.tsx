@@ -13,6 +13,7 @@ import { useSound } from "@/hooks/use-sound";
 import { queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
+import { useUserProgress } from "@/hooks/useUserProgress";
 
 export default function QuizGame() {
   const params = useParams<{ id: string }>();
@@ -22,7 +23,9 @@ export default function QuizGame() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
   const [quizCompleted, setQuizCompleted] = useState(false);
+  const [quizStartTime, setQuizStartTime] = useState<number>(Date.now());
   const { play } = useSound();
+  const { recordQuizCompletion } = useUserProgress();
   
   // Fetch quiz data
   const { data: quiz, isLoading, error } = useQuery({
@@ -84,6 +87,10 @@ export default function QuizGame() {
   const completeQuiz = () => {
     setQuizCompleted(true);
     const score = Math.round((answers.filter(Boolean).length / quiz!.questions.length) * 100);
+    const timeSpent = Math.floor((Date.now() - quizStartTime) / 60000); // Convert to minutes
+    
+    // Record quiz completion with real data
+    recordQuizCompletion(score, timeSpent);
     
     saveProgressMutation.mutate({
       completed: true,

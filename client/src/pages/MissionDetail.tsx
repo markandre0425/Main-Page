@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import GameNav from "@/components/layout/GameNav";
 import { Mission } from "@shared/schema";
 import { missions } from "@/lib/gameData";
 import { useUser } from "@/context/UserContext";
@@ -80,7 +79,6 @@ export default function MissionDetail() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-grow container mx-auto px-4 py-6">
-          <GameNav />
           <div className="flex justify-center items-center h-64">
             <p className="text-xl">Loading mission...</p>
           </div>
@@ -95,8 +93,6 @@ export default function MissionDetail() {
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-6">
-        <GameNav />
-        
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
           <div className="relative">
             <img 

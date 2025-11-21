@@ -56,6 +56,7 @@ export const safetyTips = pgTable("safety_tips", {
   icon: text("icon").notNull(),
   category: text("category").notNull(), // prevention, escape, equipment, cooking, home, electrical, children
   sourceName: text("source_name"),
+  audioUrl: text("audio_url"), // Optional audio file URL
 });
 
 export const hazards = pgTable("hazards", {
@@ -66,17 +67,6 @@ export const hazards = pgTable("hazards", {
   xPosition: integer("x_position").notNull(),
   yPosition: integer("y_position").notNull(),
   imageUrl: text("image_url"),
-});
-
-export const leaderboards = pgTable("leaderboards", {
-  id: serial("id").primaryKey(),
-  gameKey: text("game_key").notNull(),
-  userId: integer("user_id"),
-  username: text("username").notNull(),
-  timeMs: integer("time_ms").notNull(),
-  objectivesCollected: integer("objectives_collected").notNull(),
-  score: integer("score").notNull(),
-  createdAt: integer("created_at").notNull(),
 });
 
 // Insert schemas
@@ -96,4 +86,3 @@ export type MiniGame = typeof miniGames.$inferSelect;
 export type Badge = typeof badges.$inferSelect;
 export type SafetyTip = typeof safetyTips.$inferSelect;
 export type Hazard = typeof hazards.$inferSelect;
-export type Leaderboard = typeof leaderboards.$inferSelect;

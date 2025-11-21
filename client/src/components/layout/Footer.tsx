@@ -31,7 +31,6 @@ export default function Footer() {
           </div>
           
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
-            <Link href="/leaderboard" className="text-gray-300 hover:text-white text-sm">Leaderboard</Link>
             <Link href="/games" className="text-gray-300 hover:text-white text-sm">Games</Link>
             <a href="#" className="text-gray-300 hover:text-white text-sm">Privacy Policy</a>
             <a href="#" className="text-gray-300 hover:text-white text-sm">Terms of Use</a>

@@ -9,6 +9,7 @@ export default function Header() {
   const { user, logoutMutation } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [location] = useLocation();
   const [, navigate] = useLocation();
 
   const handleOpenSettings = () => {
@@ -27,6 +28,15 @@ export default function Header() {
     });
   };
 
+  // Navigation items from GameNav
+  const navItems = [
+    { name: "Home", path: "/", icon: "fa-home" },
+    { name: "Games", path: "/games", icon: "fa-gamepad" },
+    { name: "Learn", path: "/safety-tips", icon: "fa-book" },
+    { name: "Profile", path: "/profile", icon: "fa-id-card" },
+    { name: "Admin", path: "/admin", icon: "fa-lock", adminOnly: true },
+  ];
+
   return (
     <header className="bg-gradient-to-r from-[#FF5722] to-[#E91E63] text-white shadow-lg">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
@@ -37,37 +47,25 @@ export default function Header() {
           </div>
         </Link>
         
-        <div className="hidden md:flex items-center space-x-4">
-          <Link href="/about">
-            <span className="font-fredoka text-white hover:text-[#FFC107] transition-colors">About</span>
-          </Link>
-          {!user ? (
-            <Link href="/auth">
-              <span className="font-fredoka text-white hover:text-[#FFC107] transition-colors">Login</span>
-            </Link>
-          ) : (
-            <>
-              <Link href="/games">
-                <span className="font-fredoka text-white hover:text-[#FFC107] transition-colors">Games</span>
-              </Link>
-              <Link href="/leaderboard">
-                <span className="font-fredoka text-white hover:text-[#FFC107] transition-colors">Leaderboard</span>
-              </Link>
-              {user.isAdmin && (
-                <Link href="/admin">
-                  <span className="font-fredoka text-white hover:text-[#FFC107] transition-colors bg-blue-700 px-2 py-0.5 rounded">Admin</span>
-                </Link>
-              )}
-              <button 
-                onClick={handleLogout} 
-                className="font-fredoka text-white hover:text-[#FFC107] transition-colors flex items-center"
+        {/* Integrated GameNav */}
+        <nav className="hidden md:flex items-center space-x-2">
+          {navItems.filter(item => !item.adminOnly || user?.isAdmin).map((item) => (
+            <Link key={item.path} href={item.path}>
+              <motion.button 
+                className={`game-button ${
+                  location === item.path 
+                    ? "bg-[#FFC107] text-gray-800" 
+                    : "bg-white/20 text-white hover:bg-white/30"
+                } px-4 py-2 rounded-full font-fredoka shadow-md flex items-center text-sm transition-all duration-200`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <LogOut size={16} className="mr-1" />
-                <span>Logout</span>
-              </button>
-            </>
-          )}
-        </div>
+                <i className={`fas ${item.icon} mr-2`}></i> 
+                {item.name}
+              </motion.button>
+            </Link>
+          ))}
+        </nav>
         
         <div className="flex items-center space-x-3">
           {user && (
@@ -122,40 +120,26 @@ export default function Header() {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white shadow-lg border-t border-gray-200">
           <div className="container mx-auto px-4 py-4 space-y-3">
-            <Link href="/about">
-              <span className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2">About</span>
-            </Link>
-            <Link href="/leaderboard">
-              <span className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2">Leaderboard</span>
-            </Link>
-            {!user ? (
-              <Link href="/auth">
-                <span className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2">Login</span>
-              </Link>
-            ) : (
-              <>
-                <Link href="/games">
-                  <span className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2">Games</span>
-                </Link>
-                <Link href="/leaderboard">
-                  <span className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2">Leaderboard</span>
-                </Link>
-                <Link href="/profile">
-                  <span className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2">Profile</span>
-                </Link>
-                {user.isAdmin && (
-                  <Link href="/admin">
-                    <span className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2 bg-blue-100 px-2 py-1 rounded">Admin</span>
-                  </Link>
-                )}
-                <button 
-                  onClick={handleLogout} 
-                  className="block w-full text-left text-gray-800 hover:text-[#FF5722] transition-colors py-2"
+            {/* GameNav items for mobile */}
+            {navItems.filter(item => !item.adminOnly || user?.isAdmin).map((item) => (
+              <Link key={item.path} href={item.path}>
+                <span 
+                  className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2 flex items-center"
                 >
-                  Logout
-                </button>
-              </>
-            )}
+                  <i className={`fas ${item.icon} mr-3 text-lg`}></i>
+                  {item.name}
+                </span>
+              </Link>
+            ))}
+            
+            {/* Additional links */}
+            <Link href="/about">
+              <span 
+                className="block text-gray-800 hover:text-[#FF5722] transition-colors py-2"
+              >
+                About
+              </span>
+            </Link>
           </div>
         </div>
       )}

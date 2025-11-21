@@ -18,8 +18,7 @@ export default function GameNav() {
   const navItems: NavItem[] = [
     { name: "Home", path: "/", icon: "fa-home" },
     { name: "Games", path: "/games", icon: "fa-gamepad" },
-    { name: "Leaderboard", path: "/leaderboard", icon: "fa-chart-bar" },
-    { name: "Missions", path: "/mission/list", icon: "fa-tasks" },
+    { name: "Learn", path: "/safety-tips", icon: "fa-book" },
     { name: "Profile", path: "/profile", icon: "fa-id-card" },
     { name: "Admin", path: "/admin", icon: "fa-lock", adminOnly: true },
   ];
@@ -35,9 +34,9 @@ export default function GameNav() {
                   location === item.path 
                     ? "bg-[#E91E63] text-white" 
                     : "bg-white text-gray-700"
-                } px-4 py-2 rounded-xl font-fredoka shadow-md flex items-center`}
+                } px-6 py-4 rounded-xl font-fredoka shadow-md flex items-center text-lg min-h-[60px]`}
               >
-                <i className={`fas ${item.icon} mr-2`}></i> {item.name}
+                <i className={`fas ${item.icon} mr-3 text-xl`}></i> {item.name}
               </button>
             </Link>
           </li>

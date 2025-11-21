@@ -31,11 +31,6 @@ export default function MiniGamesSection() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-bangers text-3xl text-gray-800">Mini Games</h2>
         <div className="flex items-center space-x-4">
-          <Link href="/leaderboard">
-            <button className="text-[#FF5722] hover:text-[#E91E63] font-fredoka flex items-center cursor-pointer">
-              Leaderboard <i className="fas fa-chart-bar ml-1"></i>
-            </button>
-          </Link>
           <Link href="/minigame/list">
             <button className="text-[#2196F3] hover:text-blue-700 font-fredoka flex items-center cursor-pointer">
               See All <i className="fas fa-chevron-right ml-1"></i>

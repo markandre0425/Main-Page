@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import GameNav from "@/components/layout/GameNav";
+// import GameNav from "@/components/layout/GameNav"; // Removed - now integrated into Header
 
 interface TeamMember {
   name: string;
@@ -37,7 +37,6 @@ export default function AboutPage() {
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-6">
-        <GameNav />
         
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
           <div className="bg-gradient-to-r from-[#FF5722] to-[#E64A19] p-8 md:p-12 text-center">

@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import GameNav from "@/components/layout/GameNav";
+// import GameNav from "@/components/layout/GameNav"; // Removed - now integrated into Header
 import { useUser } from "@/context/UserContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Search, ThumbsUp, Bookmark, Share2, AlertTriangle, Info, Flame, Home, Zap, Car } from "lucide-react";
+import { BookOpen, Search, ThumbsUp, Bookmark, Share2, AlertTriangle, Info, Flame, Home, Zap, Car, Shield } from "lucide-react";
 import { safetyTips } from "@/lib/gameData";
+import { SafetyTip } from "@shared/schema";
 
 // Categories for safety tips
 enum TipCategory {
@@ -29,6 +30,43 @@ export default function SafetyTipsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<TipCategory>(TipCategory.ALL);
   const [savedTips, setSavedTips] = useState<number[]>([]);
+  const [likedTips, setLikedTips] = useState<number[]>([]);
+  const [tipAnalytics, setTipAnalytics] = useState<Record<number, number>>({});
+  const [showMostUseful, setShowMostUseful] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    const savedLikedTips = localStorage.getItem('likedTips');
+    const savedAnalytics = localStorage.getItem('tipAnalytics');
+    
+    if (savedLikedTips) {
+      setLikedTips(JSON.parse(savedLikedTips));
+    }
+    
+    if (savedAnalytics) {
+      setTipAnalytics(JSON.parse(savedAnalytics));
+    }
+  }, []);
+
+  // Save data to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('likedTips', JSON.stringify(likedTips));
+  }, [likedTips]);
+
+  useEffect(() => {
+    localStorage.setItem('tipAnalytics', JSON.stringify(tipAnalytics));
+  }, [tipAnalytics]);
+
+  // Cleanup audio on component unmount
+  useEffect(() => {
+    return () => {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      }
+    };
+  }, [currentAudio]);
   
   // Filter tips based on search query and category
   const filteredTips = safetyTips.filter(tip => {
@@ -50,6 +88,126 @@ export default function SafetyTipsPage() {
     } else {
       setSavedTips([...savedTips, tipId]);
     }
+  };
+
+  // Toggle like tip
+  const toggleLikeTip = (tipId: number) => {
+    if (likedTips.includes(tipId)) {
+      // Unlike tip - decrement count
+      setLikedTips(likedTips.filter(id => id !== tipId));
+      setTipAnalytics(prev => ({
+        ...prev,
+        [tipId]: Math.max((prev[tipId] || 0) - 1, 0) // Don't go below 0
+      }));
+    } else {
+      // Like tip - increment count
+      setLikedTips([...likedTips, tipId]);
+      setTipAnalytics(prev => ({
+        ...prev,
+        [tipId]: (prev[tipId] || 0) + 1
+      }));
+    }
+  };
+
+  // Audio functionality
+  const playAudio = (tip: SafetyTip) => {
+    // Stop current audio if playing
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+
+    // Use audioUrl from tip data if available, otherwise use default pattern
+    const audioUrl = tip.audioUrl || `/audio/safety-tip-${tip.id}.mp3`;
+    
+    try {
+      const audio = new Audio(audioUrl);
+      audio.volume = 0.7; // Set volume to 70%
+      
+      audio.onended = () => {
+        setCurrentAudio(null);
+      };
+      
+      audio.onerror = () => {
+        console.log(`Audio file not found: ${audioUrl}`);
+        setCurrentAudio(null);
+      };
+      
+      setCurrentAudio(audio);
+      audio.play();
+    } catch (error) {
+      console.log(`Error playing audio for tip ${tip.id}:`, error);
+    }
+  };
+
+  const stopAudio = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      setCurrentAudio(null);
+    }
+  };
+
+  // Share tip functionality
+  const shareTip = async (tip: SafetyTip) => {
+    const shareData = {
+      title: `${tip.title} - Fire Safety Tip`,
+      text: `${tip.title}\n\n${tip.content}\n\nSource: ${tip.sourceName}`,
+      url: window.location.href
+    };
+
+    if (navigator.share && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch (error) {
+        console.log('Error sharing:', error);
+        fallbackShare(tip);
+      }
+    } else {
+      fallbackShare(tip);
+    }
+  };
+
+  // Fallback sharing method
+  const fallbackShare = (tip: SafetyTip) => {
+    const shareText = `${tip.title}\n\n${tip.content}\n\nSource: ${tip.sourceName}\n\nLearn more fire safety tips at: ${window.location.href}`;
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareText).then(() => {
+        alert('Safety tip copied to clipboard! You can now share it anywhere.');
+      }).catch(() => {
+        // Fallback to text selection
+        const textArea = document.createElement('textarea');
+        textArea.value = shareText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Safety tip copied to clipboard! You can now share it anywhere.');
+      });
+    } else {
+      // Final fallback - show share text in alert
+      alert(`Share this safety tip:\n\n${shareText}`);
+    }
+  };
+
+  // Get most useful tips based on analytics
+  const getMostUsefulTips = () => {
+    return safetyTips
+      .map(tip => ({
+        ...tip,
+        likeCount: tipAnalytics[tip.id] || 0
+      }))
+      .sort((a, b) => b.likeCount - a.likeCount)
+      .slice(0, 10); // Top 10 most useful tips
+  };
+
+  // Get tips to display based on current view
+  const getTipsToDisplay = () => {
+    if (showMostUseful) {
+      return getMostUsefulTips();
+    }
+    return filteredTips;
   };
   
   // Get icon for category
@@ -85,7 +243,6 @@ export default function SafetyTipsPage() {
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-6">
-        <GameNav />
         
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -126,18 +283,44 @@ export default function SafetyTipsPage() {
               </Tabs>
             </div>
           </div>
+
+          {/* View Toggle Buttons */}
+          <div className="flex justify-center mb-6">
+            <div className="bg-gray-100 p-1 rounded-lg">
+              <Button
+                variant={!showMostUseful ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setShowMostUseful(false)}
+                className="mr-1"
+              >
+                📚 All Tips
+              </Button>
+              <Button
+                variant={showMostUseful ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setShowMostUseful(true)}
+                className="ml-1"
+              >
+                ⭐ Most Useful Tips
+              </Button>
+            </div>
+          </div>
           
           {/* Safety tips grid */}
-          {filteredTips.length > 0 ? (
+          {getTipsToDisplay().length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTips.map((tip) => (
+              {getTipsToDisplay().map((tip) => (
                 <motion.div
                   key={tip.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <Card className="h-full flex flex-col">
+                  <Card 
+                    className="h-full flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                    onMouseEnter={() => playAudio(tip)}
+                    onMouseLeave={stopAudio}
+                  >
                     <CardHeader className="pb-2">
                       <Badge variant="outline" className={`mb-2 ${getCategoryColor(tip.category)} self-start`}>
                         <div className="flex items-center">
@@ -145,7 +328,14 @@ export default function SafetyTipsPage() {
                           <span className="ml-1 capitalize">{tip.category}</span>
                         </div>
                       </Badge>
-                      <CardTitle>{tip.title}</CardTitle>
+                      <CardTitle className="flex items-center justify-between">
+                        <span>{tip.title}</span>
+                        {showMostUseful && 'likeCount' in tip && (
+                          <Badge variant="secondary" className="ml-2">
+                            ⭐ {(tip as any).likeCount} likes
+                          </Badge>
+                        )}
+                      </CardTitle>
                       <CardDescription>
                         Tip #{tip.id} • {tip.sourceName || "Fire Safety Adventure"}
                       </CardDescription>
@@ -155,11 +345,20 @@ export default function SafetyTipsPage() {
                     </CardContent>
                     <CardFooter className="pt-2 flex justify-between">
                       <div className="flex space-x-2">
-                        <Button variant="ghost" size="sm">
-                          <ThumbsUp className="h-4 w-4 mr-1" />
-                          <span>Helpful</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => toggleLikeTip(tip.id)}
+                          className={likedTips.includes(tip.id) ? "text-blue-600 bg-blue-50" : ""}
+                        >
+                          <ThumbsUp className={`h-4 w-4 mr-1 ${likedTips.includes(tip.id) ? "fill-current" : ""}`} />
+                          <span>{likedTips.includes(tip.id) ? "Liked" : "Helpful"}</span>
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => shareTip(tip)}
+                        >
                           <Share2 className="h-4 w-4 mr-1" />
                           <span>Share</span>
                         </Button>
@@ -180,15 +379,21 @@ export default function SafetyTipsPage() {
           ) : (
             <div className="flex flex-col items-center justify-center py-16 bg-gray-50 rounded-lg">
               <Search className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-xl font-bold text-gray-700 mb-2">No safety tips found</h3>
+              <h3 className="text-xl font-bold text-gray-700 mb-2">
+                {showMostUseful ? "No useful tips yet" : "No safety tips found"}
+              </h3>
               <p className="text-gray-500 text-center max-w-md">
-                We couldn't find any safety tips matching your search criteria. Try adjusting your search or category filter.
+                {showMostUseful 
+                  ? "No tips have been liked yet. Start liking tips to see the most useful ones here!"
+                  : "We couldn't find any safety tips matching your search criteria. Try adjusting your search or category filter."
+                }
               </p>
               <Button
                 className="mt-4"
                 onClick={() => {
                   setSearchQuery("");
                   setActiveCategory(TipCategory.ALL);
+                  setShowMostUseful(false);
                 }}
               >
                 View All Tips
@@ -234,25 +439,25 @@ export default function SafetyTipsPage() {
         
         {/* Resources section */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h2 className="font-bangers text-2xl text-gray-800 mb-4">Additional Resources</h2>
+          <h2 className="font-bangers text-2xl text-gray-800 mb-4">🏛️ BFP Philippines Resources</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <a 
-              href="https://www.nfpa.org/Public-Education/Staying-safe/Preparedness/Escape-planning" 
+              href="https://bfp.gov.ph/standard-public-fire-education-manual/" 
               target="_blank" 
               rel="noopener noreferrer"
               className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center mb-2">
                 <div className="bg-red-100 p-2 rounded-full mr-3">
-                  <Home className="h-6 w-6 text-red-600" />
+                  <BookOpen className="h-6 w-6 text-red-600" />
                 </div>
-                <h3 className="font-semibold">Home Escape Planning</h3>
+                <h3 className="font-semibold">BFP Education Manual</h3>
               </div>
-              <p className="text-sm text-gray-600">Learn how to create and practice a home fire escape plan</p>
+              <p className="text-sm text-gray-600">Official BFP fire safety education materials for children</p>
             </a>
             
             <a 
-              href="https://www.redcross.org/get-help/how-to-prepare-for-emergencies/types-of-emergencies/fire.html" 
+              href="https://bfp.gov.ph/category/manual/" 
               target="_blank" 
               rel="noopener noreferrer"
               className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -261,13 +466,13 @@ export default function SafetyTipsPage() {
                 <div className="bg-blue-100 p-2 rounded-full mr-3">
                   <Info className="h-6 w-6 text-blue-600" />
                 </div>
-                <h3 className="font-semibold">Red Cross Fire Safety</h3>
+                <h3 className="font-semibold">BFP Safety Manuals</h3>
               </div>
-              <p className="text-sm text-gray-600">Comprehensive fire safety resources from the Red Cross</p>
+              <p className="text-sm text-gray-600">Comprehensive fire safety guides from BFP Philippines</p>
             </a>
             
             <a 
-              href="https://www.usfa.fema.gov/prevention/" 
+              href="https://bfp.gov.ph/wp-content/uploads/2024/08/Volume-4-Fire-Safety-for-General-Public.pdf" 
               target="_blank" 
               rel="noopener noreferrer"
               className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -276,10 +481,23 @@ export default function SafetyTipsPage() {
                 <div className="bg-yellow-100 p-2 rounded-full mr-3">
                   <AlertTriangle className="h-6 w-6 text-yellow-600" />
                 </div>
-                <h3 className="font-semibold">U.S. Fire Administration</h3>
+                <h3 className="font-semibold">Fire Safety for Public</h3>
               </div>
-              <p className="text-sm text-gray-600">Fire prevention and safety materials from FEMA</p>
+              <p className="text-sm text-gray-600">BFP Volume 4: Fire Safety guidelines for general public</p>
             </a>
+          </div>
+          
+          <div className="mt-6 p-4 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border-2 border-red-200">
+            <div className="flex items-center mb-2">
+              <div className="bg-red-100 p-2 rounded-full mr-3">
+                <Shield className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="font-bold text-red-800">Official BFP Partnership</h3>
+            </div>
+            <p className="text-sm text-red-700">
+              This educational platform is developed in partnership with the Bureau of Fire Protection (BFP) Philippines. 
+              All content aligns with official BFP fire safety standards and educational guidelines.
+            </p>
           </div>
         </div>
       </main>

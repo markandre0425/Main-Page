@@ -12,9 +12,12 @@ import { Button } from "@/components/ui/button";
 import { sampleQuizQuestion } from "@/lib/data";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SpeakableText } from "@/components/SpeakableText";
+import { useTextToSpeech } from "@/hooks/use-text-to-speech";
 
 export default function HomePage() {
   const { user } = useAuth();
+  const { speak } = useTextToSpeech();
   const [quizProgress, setQuizProgress] = useState(30);
   const [userAnswer, setUserAnswer] = useState<boolean | null>(null);
   
@@ -44,9 +47,9 @@ export default function HomePage() {
   const calculateOverallProgress = () => {
     if (!userProgress || userProgress.length === 0) return 0;
     
-    const completed = userProgress.filter(p => p.completed).length;
+    const completed = userProgress.filter((p: any) => p.completed).length;
     const total = userProgress.length;
-    const inProgress = userProgress.filter(p => !p.completed && p.score > 0).length;
+    const inProgress = userProgress.filter((p: any) => !p.completed && p.score > 0).length;
     
     return Math.round((completed + (inProgress * 0.5)) / total * 100) || 65;
   };
@@ -69,6 +72,41 @@ export default function HomePage() {
       <NavBar />
       
       <main className="pb-12">
+        {/* Test Text-to-Speech Button */}
+        <div className="mx-4 md:mx-auto max-w-6xl mt-4">
+          <div className="flex gap-2 mb-4">
+            <Button 
+              onClick={() => speak("Hello! This is a test of the text to speech feature. If you can hear this, it's working!")}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              🔊 Test Text-to-Speech
+            </Button>
+            <Button 
+              onClick={() => {
+                const utterance = new SpeechSynthesisUtterance("Direct browser test");
+                utterance.rate = 0.8;
+                speechSynthesis.speak(utterance);
+              }}
+              className="bg-green-500 hover:bg-green-600 text-white"
+            >
+              🎯 Direct Browser Test
+            </Button>
+          </div>
+          <div className="text-sm text-gray-600 mb-4">
+            <p>1. Click "Direct Browser Test" first to check if your browser supports speech synthesis</p>
+            <p>2. If that works, try "Test Text-to-Speech" to test our implementation</p>
+            <p>3. Then hover over the text below to test hover functionality</p>
+          </div>
+          <div className="bg-yellow-100 p-4 rounded-lg mb-4">
+            <SpeakableText text="Hover over this text to hear it spoken aloud!">
+              <h3 className="text-lg font-bold text-yellow-800">🎤 Hover Test Area</h3>
+            </SpeakableText>
+            <SpeakableText text="This is another test sentence for text to speech.">
+              <p className="text-yellow-700 mt-2">Hover over this sentence to test text-to-speech!</p>
+            </SpeakableText>
+          </div>
+        </div>
+
         {/* Welcome Hero */}
         {progressLoading ? (
           <div className="mx-4 md:mx-auto max-w-6xl mt-6">
@@ -89,7 +127,9 @@ export default function HomePage() {
         {/* Achievement Section */}
         <div className="mx-4 md:mx-auto max-w-6xl mt-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-baloo font-bold text-dark-navy">Your Achievements</h2>
+            <SpeakableText text="Your Achievements">
+              <h2 className="text-2xl font-baloo font-bold text-dark-navy">Your Achievements</h2>
+            </SpeakableText>
             <Link href="/achievements">
               <a className="text-fire-red hover:text-fire-orange flex items-center font-medium">
                 View All
@@ -108,7 +148,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {getFeaturedAchievements().map((achievement) => (
+              {getFeaturedAchievements().map((achievement: any) => (
                 <AchievementBadge
                   key={achievement.id}
                   title={achievement.title}
@@ -126,8 +166,12 @@ export default function HomePage() {
         <div className="mx-4 md:mx-auto max-w-6xl mt-12 mb-8">
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="bg-fire-red p-6">
-              <h2 className="text-2xl font-baloo font-bold text-white">Quiz Game - Preview</h2>
-              <p className="text-white opacity-80">Test your knowledge with these multiple-choice questions</p>
+              <SpeakableText text="Quiz Game Preview - Test your knowledge with these multiple-choice questions">
+                <h2 className="text-2xl font-baloo font-bold text-white">Quiz Game - Preview</h2>
+              </SpeakableText>
+              <SpeakableText text="Test your knowledge with these multiple-choice questions">
+                <p className="text-white opacity-80">Test your knowledge with these multiple-choice questions</p>
+              </SpeakableText>
             </div>
             <div className="p-6">
               <div className="mb-8">
@@ -146,9 +190,11 @@ export default function HomePage() {
               </div>
               <div className="text-center">
                 <Link href="/games">
-                  <Button className="bg-fire-orange hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300">
-                    Start Full Quiz Game
-                  </Button>
+                  <SpeakableText text="Start Full Quiz Game">
+                    <Button className="bg-fire-orange hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300">
+                      Start Full Quiz Game
+                    </Button>
+                  </SpeakableText>
                 </Link>
               </div>
             </div>

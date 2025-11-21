@@ -24,41 +24,17 @@ export default function PersonalStats() {
     // Fetch user's stats for all games
     const fetchStats = async () => {
       try {
-        const games = ['maze', 'matching-cards', 'crossword', '3d-fire-main'];
-        const statsPromises = games.map(async (gameKey) => {
-          try {
-            const response = await fetch(`/api/leaderboard/${gameKey}/personal`, {
-              credentials: 'include'
-            });
-            if (response.ok) {
-              const data = await response.json();
-              return {
-                gameKey,
-                gameName: getGameName(gameKey),
-                bestTime: data.bestTime || 0,
-                bestScore: data.bestScore || 0,
-                objectivesCollected: data.objectivesCollected || 0,
-                rank: data.rank || 0,
-                lastPlayed: data.lastPlayed || 'Never'
-              };
-            }
-          } catch (error) {
-            console.warn(`Failed to fetch stats for ${gameKey}:`, error);
-          }
-          
-          // Return default stats if API call fails
-          return {
-            gameKey,
-            gameName: getGameName(gameKey),
-            bestTime: 0,
-            bestScore: 0,
-            objectivesCollected: 0,
-            rank: 0,
-            lastPlayed: 'Never'
-          };
-        });
+        const games = ['fire-safety-quiz', 'matching-cards'];
+        const stats = games.map((gameKey) => ({
+          gameKey,
+          gameName: getGameName(gameKey),
+          bestTime: 0,
+          bestScore: 0,
+          objectivesCollected: 0,
+          rank: 0,
+          lastPlayed: 'Never'
+        }));
 
-        const stats = await Promise.all(statsPromises);
         setGameStats(stats);
       } catch (error) {
         console.error('Failed to fetch game stats:', error);
@@ -72,10 +48,8 @@ export default function PersonalStats() {
 
   const getGameName = (gameKey: string) => {
       const gameNames: Record<string, string> = {
-    'maze': 'Fire Safety Maze',
-    'matching-cards': 'Matching Cards',
-    'crossword': 'Crossword Puzzle',
-    '3d-fire-main': '3D Fire Main'
+    'fire-safety-quiz': 'Fire Safety Quiz',
+    'matching-cards': 'Matching Card Game'
   };
     return gameNames[gameKey] || gameKey;
   };
@@ -94,12 +68,6 @@ export default function PersonalStats() {
     <section className="mb-8">
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-bangers text-3xl text-gray-800">Your Achievements</h2>
-        <Link href="/leaderboard">
-          <button className="bg-[#FF5722] hover:bg-[#E91E63] text-white px-4 py-2 rounded-lg font-fredoka transition-colors flex items-center">
-            <Trophy className="w-4 h-4 mr-2" />
-            View All Leaderboards
-          </button>
-        </Link>
       </div>
 
       {loading ? (
@@ -154,14 +122,6 @@ export default function PersonalStats() {
                     <span className="font-semibold text-[#FF5722]">#{game.rank}</span>
                   </div>
                 )}
-              </div>
-              
-              <div className="mt-4 pt-3 border-t border-gray-100">
-                <Link href={`/leaderboard?game=${game.gameKey}`}>
-                  <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg font-fredoka text-sm transition-colors">
-                    View Rankings
-                  </button>
-                </Link>
               </div>
             </div>
           ))}

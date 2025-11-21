@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import GameNav from "@/components/layout/GameNav";
+// import GameNav from "@/components/layout/GameNav"; // Removed - now integrated into Header
 import { useUser } from "@/context/UserContext";
 import { Badge } from "@shared/schema";
 import { badges } from "@/lib/gameData";
@@ -29,7 +29,6 @@ export default function RewardsPage() {
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-6">
-        <GameNav />
         
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="mb-6">

@@ -3,7 +3,6 @@ import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import GameNav from "@/components/layout/GameNav";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Award, Star } from "lucide-react";
 import { useUser } from "@/context/UserContext";
@@ -169,7 +168,6 @@ export default function MiniGamePage() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-grow container mx-auto px-4 py-6">
-          <GameNav />
           <div className="flex justify-center items-center h-64">
             <p className="text-xl">Loading game...</p>
           </div>
@@ -184,8 +182,6 @@ export default function MiniGamePage() {
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-6">
-        <GameNav />
-        
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">

@@ -11,7 +11,7 @@ export function ProtectedRoute({
   component: () => React.JSX.Element;
   adminOnly?: boolean;
 }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isGuest } = useAuth();
 
   if (isLoading) {
     return (
@@ -23,16 +23,17 @@ export function ProtectedRoute({
     );
   }
 
-  if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/auth" />
-      </Route>
-    );
-  }
+  // Allow access without authentication (auth removed)
+  // if (!user && !isGuest) {
+  //   return (
+  //     <Route path={path}>
+  //       <Redirect to="/auth" />
+  //     </Route>
+  //   );
+  // }
 
-  // Check admin access for admin-only routes
-  if (adminOnly && !user.isAdmin) {
+  // Check admin access for admin-only routes (guests cannot access admin)
+  if (adminOnly && (!user?.isAdmin || isGuest)) {
     return (
       <Route path={path}>
         <Redirect to="/" />

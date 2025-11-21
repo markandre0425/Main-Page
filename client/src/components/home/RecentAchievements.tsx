@@ -41,9 +41,9 @@ export default function RecentAchievements() {
     },
     {
       id: 5,
-      icon: "🎯",
-      title: "3D Fire Master",
-      description: "Complete the 3D Fire Main game",
+      icon: "📚",
+      title: "Quiz Master",
+      description: "Complete the Fire Safety Quiz",
       progress: 0,
       total: 1,
       color: "from-purple-500 to-pink-600"

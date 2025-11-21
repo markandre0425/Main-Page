@@ -1,11 +1,10 @@
-import { users, type User, type InsertUser, type MiniGame, leaderboards as lbTable } from "@shared/schema";
+import { users, type User, type InsertUser, type MiniGame } from "@shared/schema";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import pgPkg from "pg";
 const { Pool } = pgPkg as unknown as { Pool: any };
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { hashPassword } from "./auth";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -25,25 +24,8 @@ export interface IStorage {
   updateGame(id: number, gameData: Partial<MiniGame>): Promise<MiniGame>;
   deleteGame(id: number): Promise<boolean>;
   
-  // Leaderboards
-  submitLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 'createdAt' | 'score'>): Promise<LeaderboardEntry>;
-  getLeaderboard(gameKey: string, limit?: number): Promise<LeaderboardEntry[]>;
-
   // Session management
   sessionStore: session.Store;
-}
-
-export interface LeaderboardEntry {
-  id: number;
-  gameKey: string; // e.g. "maze", "escape-room", "matching-cards"
-  userId?: number;
-  username: string; // fallback/display name
-  displayName?: string; // user's display name if available
-  fullName: string; // preferred display name (displayName or username)
-  timeMs: number; // total time to finish (lower is better)
-  objectivesCollected: number; // number of objectives collected (higher is better)
-  score: number; // derived score, optional for display
-  createdAt: number; // epoch ms
 }
 
 export class MemStorage implements IStorage {
@@ -51,8 +33,6 @@ export class MemStorage implements IStorage {
   private games: MiniGame[];
   private userIdCounter: number;
   private gameIdCounter: number;
-  private leaderboards: Map<string, LeaderboardEntry[]>;
-  private leaderboardIdCounter: number;
   public sessionStore: session.Store;
 
   constructor() {
@@ -60,8 +40,6 @@ export class MemStorage implements IStorage {
     this.games = [];
     this.userIdCounter = 1;
     this.gameIdCounter = 1;
-    this.leaderboards = new Map();
-    this.leaderboardIdCounter = 1;
     
     // Create memory store for sessions (fallback)
     const MemoryStore = createMemoryStore(session);
@@ -71,24 +49,7 @@ export class MemStorage implements IStorage {
 
     // Add default APULA games that should always be available
     (async () => {
-      // Add default admin user with hashed password
-      await this.createUser({
-        username: 'admin1',
-        password: await hashPassword('admin1'),
-        isAdmin: true
-      });
-
       // Add default APULA games
-      await this.createGame({
-        title: "APULA Fire Safety Maze",
-        description: "Navigate through a 3D maze while learning fire safety principles. Collect fire extinguishers, safety tips, and escape safely!",
-        type: "3d-maze",
-        bestScore: null,
-        imageUrl: "https://placehold.co/400x300/FF5722/FFFFFF/svg?text=Fire+Safety+Maze",
-        externalUrl: "https://apula-maze-pqu6.onrender.com/",
-        isExternal: true
-      });
-
       await this.createGame({
         title: "APULA Matching Cards",
         description: "Match fire safety concepts with their definitions. Learn important safety terms through fun card matching!",
@@ -96,16 +57,6 @@ export class MemStorage implements IStorage {
         bestScore: null,
         imageUrl: "https://placehold.co/400x300/2196F3/FFFFFF/svg?text=Matching+Cards",
         externalUrl: "https://apula-matching-card.onrender.com",
-        isExternal: true
-      });
-
-      await this.createGame({
-        title: "3D Fire Main",
-        description: "Experience immersive 3D fire safety training with realistic scenarios and interactive learning modules.",
-        type: "3d-simulation",
-        bestScore: null,
-        imageUrl: "https://placehold.co/400x300/FF9800/FFFFFF/svg?text=3D+Fire+Main",
-        externalUrl: "https://threed-fire-main.onrender.com",
         isExternal: true
       });
 
@@ -122,6 +73,7 @@ export class MemStorage implements IStorage {
       (user) => user.username === username,
     );
   }
+
 
   async getAllUsers(): Promise<Map<number, User>> {
     return this.users;
@@ -231,73 +183,11 @@ export class MemStorage implements IStorage {
     
     return true;
   }
-
-  // Leaderboard methods
-  private static rankEntries(entries: LeaderboardEntry[]): LeaderboardEntry[] {
-    // Sort by: time ascending, objectives desc, createdAt asc
-    return [...entries].sort((a, b) => {
-      if (a.timeMs !== b.timeMs) return a.timeMs - b.timeMs;
-      if (a.objectivesCollected !== b.objectivesCollected) return b.objectivesCollected - a.objectivesCollected;
-      return a.createdAt - b.createdAt;
-    });
-  }
-
-  async submitLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 'createdAt' | 'score'>): Promise<LeaderboardEntry> {
-    const id = this.leaderboardIdCounter++;
-    const createdAt = Date.now();
-    // Simple derived score example: more objectives and faster time
-    const score = entry.objectivesCollected * 1000 - Math.floor(entry.timeMs / 100);
-
-    const fullEntry: LeaderboardEntry = {
-      id,
-      createdAt,
-      score,
-      ...entry,
-    };
-
-    const list = this.leaderboards.get(entry.gameKey) ?? [];
-    list.push(fullEntry);
-    this.leaderboards.set(entry.gameKey, list);
-
-    return fullEntry;
-  }
-
-  async getLeaderboard(gameKey: string, limit = 50): Promise<LeaderboardEntry[]> {
-    const list = this.leaderboards.get(gameKey) ?? [];
-    const ranked = MemStorage.rankEntries(list);
-    
-    // Try to get display names for users if we have userIds
-    const entriesWithDisplayNames = await Promise.all(
-      ranked.slice(0, limit).map(async (entry) => {
-        if (entry.userId) {
-          try {
-            const user = await this.getUser(entry.userId);
-            if (user && user.displayName) {
-              return {
-                ...entry,
-                displayName: user.displayName,
-                fullName: user.displayName || entry.username
-              };
-            }
-          } catch (error) {
-            console.warn(`Failed to get user ${entry.userId}:`, error);
-          }
-        }
-        return {
-          ...entry,
-          displayName: entry.username,
-          fullName: entry.username
-        };
-      })
-    );
-    
-    return entriesWithDisplayNames;
-  }
 }
 
 export const storage = new MemStorage();
 
-// Optional: Postgres-backed leaderboard if DATABASE_URL is present (Render Postgres)
+// Optional: Postgres-backed storage if DATABASE_URL is present (Render Postgres)
 (async () => {
   try {
     // Check if DATABASE_URL is actually set and not empty
@@ -337,85 +227,10 @@ export const storage = new MemStorage();
         console.warn("PostgreSQL session store unavailable, using memory store:", sessionError);
         // Keep using the memory store if PostgreSQL session store fails
       }
-
-      // Extend storage with DB methods for leaderboard
-      const mem = storage as MemStorage;
-      mem.submitLeaderboardEntry = async (entry) => {
-        const createdAt = Date.now();
-        const score = entry.objectivesCollected * 1000 - Math.floor(entry.timeMs / 100);
-        const inserted = await db
-          .insert(lbTable)
-          .values({
-            gameKey: entry.gameKey,
-            userId: entry.userId ?? null,
-            username: entry.username,
-            timeMs: entry.timeMs,
-            objectivesCollected: entry.objectivesCollected,
-            score,
-            createdAt,
-          })
-          .returning();
-        
-        // Convert to LeaderboardEntry format
-        const dbEntry = inserted[0];
-        return {
-          id: dbEntry.id,
-          gameKey: dbEntry.gameKey,
-          userId: dbEntry.userId ?? undefined,
-          username: dbEntry.username,
-          displayName: dbEntry.username, // Will be updated when retrieved
-          fullName: dbEntry.username, // Will be updated when retrieved
-          timeMs: dbEntry.timeMs,
-          objectivesCollected: dbEntry.objectivesCollected,
-          score: dbEntry.score,
-          createdAt: dbEntry.createdAt,
-        } as LeaderboardEntry;
-      };
-      
-      mem.getLeaderboard = async (gameKey: string, limit = 50) => {
-        // Join with users table to get display names
-        const rows = await db
-          .select({
-            id: lbTable.id,
-            gameKey: lbTable.gameKey,
-            userId: lbTable.userId,
-            username: lbTable.username,
-            timeMs: lbTable.timeMs,
-            objectivesCollected: lbTable.objectivesCollected,
-            score: lbTable.score,
-            createdAt: lbTable.createdAt,
-            displayName: users.displayName
-          })
-          .from(lbTable)
-          .leftJoin(users, sql`${lbTable.userId} = ${users.id}`)
-          .where(sql`${lbTable.gameKey} = ${gameKey}`)
-          .limit(limit);
-        
-        // Convert to LeaderboardEntry format and sort
-        const entries = rows.map(row => ({
-          id: row.id,
-          gameKey: row.gameKey,
-          userId: row.userId ?? undefined,
-          username: row.username,
-          displayName: row.displayName,
-          fullName: row.displayName || row.username,
-          timeMs: row.timeMs,
-          objectivesCollected: row.objectivesCollected,
-          score: row.score,
-          createdAt: row.createdAt,
-        } as LeaderboardEntry));
-        
-        // Sort same as memory (time asc, objectives desc, created asc)
-        return entries.sort((a, b) => {
-          if (a.timeMs !== b.timeMs) return a.timeMs - b.timeMs;
-          if (a.objectivesCollected !== b.objectivesCollected) return b.objectivesCollected - a.objectivesCollected;
-          return a.createdAt - b.createdAt;
-        });
-      };
     } else {
       console.log('📝 No DATABASE_URL found, using in-memory storage only');
     }
   } catch (e) {
-    console.warn("Postgres leaderboard unavailable, using in-memory fallback:", e);
+    console.warn("Postgres unavailable, using in-memory fallback:", e);
   }
 })();

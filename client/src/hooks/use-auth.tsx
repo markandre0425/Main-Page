@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import {
   useQuery,
   useMutation,
@@ -15,6 +15,7 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  isGuest: boolean;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -23,6 +24,35 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestUser, setGuestUser] = useState<SelectUser | null>(null);
+
+  // Check for guest user on mount, or create default guest
+  useEffect(() => {
+    const storedGuestUser = sessionStorage.getItem('guestUser');
+    if (storedGuestUser) {
+      setGuestUser(JSON.parse(storedGuestUser));
+      setIsGuest(true);
+    } else {
+      // Create default guest user since auth is removed
+      const defaultGuest = {
+        id: 'guest',
+        username: 'guest',
+        displayName: 'Fire Safety Hero',
+        ageGroup: 'kids' as const,
+        level: 1,
+        points: 0,
+        progress: 0,
+        isAdmin: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setGuestUser(defaultGuest);
+      setIsGuest(true);
+      sessionStorage.setItem('guestUser', JSON.stringify(defaultGuest));
+    }
+  }, []);
+
   const {
     data: user,
     error,
@@ -30,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<SelectUser | null, Error>({
     queryKey: ['/api/user'],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: !isGuest, // Only fetch from server if not in guest mode
   });
 
   const loginMutation = useMutation({
@@ -38,6 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Clear guest mode when logging in
+      sessionStorage.removeItem('guestUser');
+      setIsGuest(false);
+      setGuestUser(null);
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Login successful",
@@ -59,6 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Clear guest mode when registering
+      sessionStorage.removeItem('guestUser');
+      setIsGuest(false);
+      setGuestUser(null);
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Registration successful",
@@ -94,15 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Return guest user if in guest mode, otherwise return server user
+  const currentUser = isGuest ? guestUser : user;
+
   return (
     <AuthContext.Provider
       value={{
-        user: user ?? null,
-        isLoading,
+        user: currentUser ?? null,
+        isLoading: isGuest ? false : isLoading,
         error,
         loginMutation,
         logoutMutation,
         registerMutation,
+        isGuest,
       }}
     >
       {children}
