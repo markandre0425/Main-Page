@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { FireSafetyStars } from "@/components/progress/FireSafetyStars";
@@ -19,6 +20,18 @@ export default function ProfilePage() {
     getRecentGames, 
     getEarnedAchievements 
   } = useUserProgress();
+
+  // Hero name synced with HeroSection (same localStorage key); re-read on focus so it updates after editing on Home
+  const [heroName, setHeroName] = useState("Fire Hero");
+  const syncHeroName = () => {
+    const saved = localStorage.getItem("heroName");
+    if (saved) setHeroName(saved);
+  };
+  useEffect(() => {
+    syncHeroName();
+    window.addEventListener("focus", syncHeroName);
+    return () => window.removeEventListener("focus", syncHeroName);
+  }, []);
   
   const earnedAchievements = getEarnedAchievements();
   const achievementProgress = achievements.length > 0 ? Math.round((earnedAchievements.length / achievements.length) * 100) : 0;
@@ -73,7 +86,7 @@ export default function ProfilePage() {
                   </div>
                 </motion.div>
                 
-                <h3 className="text-xl font-bold">{user.displayName || user.username}</h3>
+                <h3 className="text-xl font-bold">{heroName}</h3>
                 <div className="flex items-center mt-2 space-x-1">
                   <Badge variant="outline" className="bg-blue-50">Level {user.level || 1}</Badge>
                   <Badge variant="outline" className="bg-purple-50">{user.points || 0} points</Badge>

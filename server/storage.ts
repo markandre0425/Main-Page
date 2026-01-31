@@ -6,8 +6,7 @@ const { Pool } = pgPkg as unknown as { Pool: any };
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
-// modify the interface with any CRUD methods
-// you might need
+// modify the interface with CRUD methods
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -55,8 +54,18 @@ export class MemStorage implements IStorage {
         description: "Match fire safety concepts with their definitions. Learn important safety terms through fun card matching!",
         type: "matching-cards",
         bestScore: null,
-        imageUrl: "https://placehold.co/400x300/2196F3/FFFFFF/svg?text=Matching+Cards",
+        imageUrl: "/images/games/matching-cards.png",
         externalUrl: "https://apula-matching-card.onrender.com",
+        isExternal: true
+      });
+
+      await this.createGame({
+        title: "Fire Safety Adventure",
+        description: "Experience immersive 3D fire safety training with realistic scenarios and interactive learning modules.",
+        type: "3d-simulation",
+        bestScore: null,
+        imageUrl: "/images/games/fpv3d.jpg",
+        externalUrl: "https://fpv3d.onrender.com/",
         isExternal: true
       });
 

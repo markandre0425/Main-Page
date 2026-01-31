@@ -1,68 +1,23 @@
-import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
-import { Trophy, Clock, Target, TrendingUp, Award } from "lucide-react";
+import { useUserProgress } from "@/hooks/useUserProgress";
+import { Trophy } from "lucide-react";
 
-type GameStats = {
-  gameKey: string;
-  gameName: string;
-  bestTime: number;
-  bestScore: number;
-  objectivesCollected: number;
-  rank: number;
-  lastPlayed: string;
-};
-
+/**
+ * Your Achievements: summary stats + recent activity from useUserProgress.
+ * MVP: unified feed for reliability; architecture supports per-game cards in V2
+ * via gameSessions.filter(by gameId). Consider normalizing scores if games use
+ * different scales (e.g. quiz % vs card-game points).
+ */
 export default function PersonalStats() {
   const { user } = useAuth();
-  const [gameStats, setGameStats] = useState<GameStats[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-
-    // Fetch user's stats for all games
-    const fetchStats = async () => {
-      try {
-        const games = ['fire-safety-quiz', 'matching-cards'];
-        const stats = games.map((gameKey) => ({
-          gameKey,
-          gameName: getGameName(gameKey),
-          bestTime: 0,
-          bestScore: 0,
-          objectivesCollected: 0,
-          rank: 0,
-          lastPlayed: 'Never'
-        }));
-
-        setGameStats(stats);
-      } catch (error) {
-        console.error('Failed to fetch game stats:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [user]);
-
-  const getGameName = (gameKey: string) => {
-      const gameNames: Record<string, string> = {
-    'fire-safety-quiz': 'Fire Safety Quiz',
-    'matching-cards': 'Matching Card Game'
-  };
-    return gameNames[gameKey] || gameKey;
-  };
-
-  const formatTime = (ms: number) => {
-    if (ms === 0) return 'N/A';
-    const sec = Math.floor(ms / 1000);
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-  };
+  const { progress, getRecentGames } = useUserProgress();
 
   if (!user) return null;
+
+  const recentGames = getRecentGames(5);
+  const hasAnyProgress = progress.quizzesTaken > 0 || progress.gamesPlayed > 0 || recentGames.length > 0;
 
   return (
     <section className="mb-8">
@@ -70,72 +25,50 @@ export default function PersonalStats() {
         <h2 className="font-bangers text-3xl text-gray-800">Your Achievements</h2>
       </div>
 
-      {loading ? (
-        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-[#FF5722] rounded-full border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your achievements...</p>
+      {hasAnyProgress ? (
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-[#FF5722]">{progress.quizzesTaken}</p>
+              <p className="text-sm text-gray-600">Quizzes completed</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-[#FF5722]">{progress.gamesPlayed}</p>
+              <p className="text-sm text-gray-600">Games played</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-[#FF5722]">{progress.highestScore}%</p>
+              <p className="text-sm text-gray-600">Best score</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-[#FF5722]">{progress.achievementsEarned}</p>
+              <p className="text-sm text-gray-600">Achievements</p>
+            </div>
+          </div>
+          {recentGames.length > 0 && (
+            <div>
+              <h3 className="font-fredoka text-lg text-gray-800 mb-2">Recent activity</h3>
+              <ul className="space-y-1 text-sm text-gray-600">
+                {recentGames.map((g, i) => (
+                  <li key={i}>
+                    {g.gameName} — {g.score}%{g.completed ? " ✓" : ""}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(g.timestamp), { addSuffix: true })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {gameStats.map((game) => (
-            <div key={game.gameKey} className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-fredoka text-lg text-gray-800">{game.gameName}</h3>
-                {game.rank > 0 && game.rank <= 3 && (
-                  <span className="text-2xl">
-                    {game.rank === 1 ? '🥇' : game.rank === 2 ? '🥈' : '🥉'}
-                  </span>
-                )}
-              </div>
-              
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 flex items-center">
-                    <Clock className="w-4 h-4 mr-1" />
-                    Best Time:
-                  </span>
-                  <span className="font-semibold">{formatTime(game.bestTime)}</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 flex items-center">
-                    <Target className="w-4 h-4 mr-1" />
-                    Objectives:
-                  </span>
-                  <span className="font-semibold">{game.objectivesCollected}</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 flex items-center">
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                    Best Score:
-                  </span>
-                  <span className="font-semibold">{game.bestScore || 'N/A'}</span>
-                </div>
-                
-                {game.rank > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600 flex items-center">
-                      <Award className="w-4 h-4 mr-1" />
-                      Rank:
-                    </span>
-                    <span className="font-semibold text-[#FF5722]">#{game.rank}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      
-      {!loading && gameStats.every(game => game.bestTime === 0) && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
           <Trophy className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-          <h3 className="font-fredoka text-lg text-blue-800 mb-2">Start Your Journey!</h3>
-          <p className="text-blue-600 mb-4">Play some games to see your achievements and rankings here.</p>
+          <h3 className="font-fredoka text-lg text-blue-800 mb-2">Start your journey</h3>
+          <p className="text-blue-600 mb-4">Play Fire Safety Quiz or Matching Card Game to see your achievements here.</p>
           <Link href="/games">
             <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-fredoka">
-              Play Games
+              Play games
             </button>
           </Link>
         </div>

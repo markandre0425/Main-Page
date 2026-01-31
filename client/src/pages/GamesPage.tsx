@@ -21,6 +21,7 @@ interface BuiltInGame {
   color: string;
   icon: React.ReactNode;
   path: string;
+  imageUrl?: string;
 }
 
 export default function GamesPage() {
@@ -31,7 +32,8 @@ export default function GamesPage() {
       description: "Test your knowledge with interactive quizzes about fire prevention and safety procedures.",
       color: "bg-gradient-to-br from-[#FF5722] to-orange-700",
       icon: <HelpCircle className="w-8 h-8 text-white/80" />,
-      path: "/games/fire-safety-quiz"
+      path: "/games/fire-safety-quiz",
+      imageUrl: "/images/games/fire-safety-quiz.png"
     },
   ]);
   
@@ -73,14 +75,22 @@ export default function GamesPage() {
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 <div className="h-40 overflow-hidden relative">
-                  <div className={`${game.color} h-full flex items-center justify-center`}>
-                    <div className="text-center text-white">
-                      <div className="flex items-center justify-center gap-2">
-                        {game.icon}
-                        <h3 className="font-fredoka text-2xl">{game.title}</h3>
+                  {game.imageUrl ? (
+                    <img
+                      src={game.imageUrl}
+                      alt={game.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className={`${game.color} h-full flex items-center justify-center`}>
+                      <div className="text-center text-white">
+                        <div className="flex items-center justify-center gap-2">
+                          {game.icon}
+                          <h3 className="font-fredoka text-2xl">{game.title}</h3>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 className="font-fredoka text-xl text-gray-800 mb-2">{game.title}</h3>
